@@ -34,6 +34,8 @@ static void SpriteCallback_UpdateSpritePosition(struct Sprite *sprite);
 static void TrainerSpriteCallback(struct Sprite *sprite);
 static void CreateTrainerSprite(void);
 static void SetSpriteTemplateParameters(void);
+static void FreeSpriteTilesIfUnused(u16);
+static void FreeSpritePaletteIfUnused(u8);
 
 //.rodata
 
@@ -173,7 +175,11 @@ static void CreateNewScrollBarSlot(s8 slot, u8 scrollDirection)
 {
     u8 spriteId;
 
-    LoadCompressedObjectPic(&sCostumeOverworldSpriteTable[selection + slot]);
+    // Only load the sprite pic into VRAM if it isn't already there.
+    if (GetSpriteTileStartByTag(sCostumeOverworldSpriteTable[selection + slot].tag) == 0xFFFF)
+    {
+        LoadCompressedObjectPic(&sCostumeOverworldSpriteTable[selection + slot]);
+    }
     LoadCompressedObjectPalette(&sCostumeOverworldPaletteTable[selection + slot]);
     spriteId = CreateSprite(&sSpriteTemplate_Costumes[selection + slot], xPos_initial + slot*slotSize, yPos, 0);
     gSprites[spriteId].data[0] = slot;
@@ -182,38 +188,39 @@ static void CreateNewScrollBarSlot(s8 slot, u8 scrollDirection)
 
 static void HandleKeyPresses(void)
 {
-if (sScrollBarState == NONE)
-{
-    if ((gMain.newKeys & DPAD_LEFT) && (selection != NUMBER_OF_COSTUMES))
+    if (sScrollBarState == NONE)
     {
-        CreateNewScrollBarSlot(7, SCROLL_LEFT);
-        selection++;
-        PlaySE(SE_Z_SCROLL);
+        if ((gMain.newKeys & DPAD_LEFT) && (selection != NUMBER_OF_COSTUMES))
+        {
+            CreateNewScrollBarSlot(7, SCROLL_LEFT);
+            selection++;
+            PlaySE(SE_Z_SCROLL);
+        }
+        if ((gMain.newKeys & DPAD_RIGHT) && (selection != 0))
+        {
+            CreateNewScrollBarSlot(-1, SCROLL_RIGHT);
+            selection--;
+            PlaySE(SE_Z_SCROLL);
+        }
+        if (gMain.newKeys & A_BUTTON) // && (GetFlag(CostumeFlags(selection)) == TRUE)
+        {
+            //pop-up confirmation menu first
+            PlaySE(SE_SELECT);
+            //gSaveBlock2Ptr->costume = selection;
+            //gSaveBlock2Ptr->gender = gCostumes[selection].gender;
+        }
+        if (gMain.newKeys & (B_BUTTON | START_BUTTON))
+        {
+            BeginNormalPaletteFade(0xFFFFFFFF, 0, 0, 0x10, RGB_BLACK);
+            PlaySE(SE_PC_OFF);
+            SetMainCallback2(CB2_ReturnToFieldWithOpenMenu);
+        }
+        else if (gMain.newKeys & (DPAD_LEFT | DPAD_RIGHT)) // | A_BUTTON))
+        {
+            PlaySE(SE_HAZURE);
+        }
     }
-    if ((gMain.newKeys & DPAD_RIGHT) && (selection != 0))
-    {
-        CreateNewScrollBarSlot(-1, SCROLL_RIGHT);
-        selection--;
-        PlaySE(SE_Z_SCROLL);
-    }
-    if (gMain.newKeys & A_BUTTON) // && (GetFlag(CostumeFlags(selection)) == TRUE)
-    {
-        //pop-up confirmation menu first
-        PlaySE(SE_SELECT);
-        //gSaveBlock2Ptr->costume = selection;
-        //gSaveBlock2Ptr->gender = gCostumes[selection].gender;
-    }
-    if (gMain.newKeys & (B_BUTTON | START_BUTTON))
-    {
-        BeginNormalPaletteFade(0xFFFFFFFF, 0, 0, 0x10, RGB_BLACK);
-        PlaySE(SE_PC_OFF);
-        SetMainCallback2(CB2_ReturnToFieldWithOpenMenu);
-    }
-    else if (gMain.newKeys & (DPAD_LEFT | DPAD_RIGHT)) // | A_BUTTON))
-    {
-    PlaySE(SE_HAZURE);
-    }
-}
+
     AnimateSprites();
     BuildOamBuffer();
 }
@@ -242,7 +249,7 @@ static void UpdateSpritePositions(void)
     
     for (slot = 0; slot <=6; slot++)
     {
-    DestroySprite(&gSprites[gCostumeSpriteId[slot]]);
+        DestroySprite(&gSprites[gCostumeSpriteId[slot]]);
     }
 
     CreateOverworldScrollBar();
@@ -251,15 +258,15 @@ static void UpdateSpritePositions(void)
 static void UpdateSlotNumbers(struct Sprite *sprite)
 {
     if (sScrollBarState == SCROLL_LEFT)
-        {
+    {
         sprite->data[0]--;
         sprite->callback = SpriteCallback_UpdateSpritePosition;
-        }
+    }
     if (sScrollBarState == SCROLL_RIGHT)
-        {
+    {
         sprite->data[0]++;
         sprite->callback = SpriteCallback_UpdateSpritePosition;
-        }
+    }
 }
 
 static void SpriteCallback_UpdateSpritePosition(struct Sprite *sprite)
@@ -270,24 +277,27 @@ static void SpriteCallback_UpdateSpritePosition(struct Sprite *sprite)
     // position of the sprite to its next slot position
 
     if (sprite->pos1.x > (xPos_initial + sprite->data[0]*slotSize))        //DPAD_LEFT
-        {
+    {
         sprite->pos1.x -= 2;
-        }
+    }
     if (sprite->pos1.x < (xPos_initial + sprite->data[0]*slotSize))        //DPAD_RIGHT
-        {
+    {
         sprite->pos1.x += 2;
-        }
+    }
     if (sprite->pos1.x <= xPos_initial - slotSize || sprite->pos1.x >= xPos_initial + (7*slotSize))
-		// Need to add a check to see if other members of the gSprites array have the same paletteTag.
-        {
-        FreeSpritePalette(sprite);
+	// Need to add a check to see if other members of the gSprites array have the same paletteTag.
+    {
+        u8 paletteNum = sprite->oam.paletteNum; 
+        u16 sheetTileStart = sprite->sheetTileStart;
         DestroySprite(sprite);
-        }
+        FreeSpritePaletteIfUnused(paletteNum);
+        FreeSpriteTilesIfUnused(sheetTileStart);
+    }
     else if (sprite->pos1.x == xPos_initial + sprite->data[0]*slotSize)
-        {
+    {
         sScrollBarState = NONE;
         sprite->callback = UpdateSlotNumbers;
-        }
+    }
 }
 
 static void SetSpriteTemplateParameters(void)
@@ -316,7 +326,36 @@ static void TrainerSpriteCallback(struct Sprite *sprite)
     if (sprite->data[1] != selection)
     {
         FreeSpritePalette(sprite);
+        FreeSpriteTiles(sprite);
         DestroySprite(sprite);
         CreateTrainerSprite();
+    }
+}
+
+static void FreeSpriteTilesIfUnused(u16 tileStart)
+{
+    u8 i;
+    u16 tag = GetSpriteTileTagByTileStart(tileStart);
+
+    if (tag != 0xFFFF)
+    {
+        for (i = 0; i < MAX_SPRITES; i++)
+            if (gSprites[i].inUse && gSprites[i].usingSheet && tileStart == gSprites[i].sheetTileStart)
+                return;
+        FreeSpriteTilesByTag(tag);
+    }
+}
+
+static void FreeSpritePaletteIfUnused(u8 paletteNum)
+{
+    u8 i;
+    u16 tag = GetSpritePaletteTagByPaletteNum(paletteNum);
+
+    if (tag != 0xFFFF)
+    {
+        for (i = 0; i < MAX_SPRITES; i++)
+            if (gSprites[i].inUse && gSprites[i].oam.paletteNum == paletteNum)
+                return;
+        FreeSpritePaletteByTag(tag);
     }
 }
