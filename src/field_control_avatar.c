@@ -306,6 +306,8 @@ static const u8 *GetInteractedEventObjectScript(struct MapPosition *position, u8
 
     if (InTrainerHill() == TRUE)
         script = sub_81D62AC();
+    else if (gEventObjects[eventObjectId].localId == EVENT_OBJ_ID_FOLLOWER)
+        script = gFollowerScript;
     else
         script = GetEventObjectScriptPointerByEventObjectId(eventObjectId);
 

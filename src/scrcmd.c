@@ -1182,13 +1182,13 @@ bool8 ScrCmd_setobjectmovementtype(struct ScriptContext *ctx)
 bool8 ScrCmd_createvobject(struct ScriptContext *ctx)
 {
     u8 graphicsId = ScriptReadByte(ctx);
-    u8 v2 = ScriptReadByte(ctx);
+    u8 eventObjectId = ScriptReadByte(ctx);
     u16 x = VarGet(ScriptReadHalfword(ctx));
     u32 y = VarGet(ScriptReadHalfword(ctx));
     u8 elevation = ScriptReadByte(ctx);
     u8 direction = ScriptReadByte(ctx);
 
-    sprite_new(graphicsId, v2, x, y, elevation, direction);
+    sprite_new(graphicsId, eventObjectId, x, y, elevation, direction);
     return FALSE;
 }
 
@@ -2293,4 +2293,19 @@ bool8 ScrCmd_warpE0(struct ScriptContext *ctx)
     sub_80AF79C();
     ResetInitialPlayerAvatarState();
     return TRUE;
+}
+
+bool8 ScrCmd_createfollower(struct ScriptContext *ctx)
+{
+    u8 graphicsId = ScriptReadByte(ctx);
+    const void *script = (const void *)ScriptReadWord(ctx);
+    u8 direction = ScriptReadByte(ctx);
+    CreateFollowerEventObject(graphicsId, script, direction);
+    return FALSE;
+}
+
+bool8 ScrCmd_destroyfollower(struct ScriptContext *ctx)
+{
+    DestroyFollowerEventObject();
+    return FALSE;
 }

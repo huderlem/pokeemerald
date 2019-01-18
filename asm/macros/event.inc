@@ -1554,6 +1554,17 @@
 	.2byte \quantity
 	.endm
 
+	.macro createfollower graphicsId:req script:req direction:req
+	.byte 0xe3
+	.byte \graphicsId
+	.4byte \script
+	.byte \direction
+	.endm
+
+	.macro destroyfollower
+	.byte 0xe4
+	.endm
+
 
 @ Supplementary
 

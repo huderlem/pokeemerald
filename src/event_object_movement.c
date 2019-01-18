@@ -53,6 +53,7 @@ static u8 setup##_callback(struct EventObject *eventObject, struct Sprite *sprit
 EWRAM_DATA u8 sCurrentReflectionType = 0;
 EWRAM_DATA u16 sCurrentSpecialObjectPaletteTag = 0;
 EWRAM_DATA struct LockedAnimEventObjects *gLockedAnimEventObjects = {0};
+EWRAM_DATA const u8 *gFollowerScript = NULL;
 
 static void MoveCoordsInDirection(u32, s16 *, s16 *, s16, s16);
 static bool8 EventObjectExecSingleMovementAction(struct EventObject *, struct Sprite *);
@@ -65,7 +66,7 @@ static void EventObjectExecHeldMovementAction(struct EventObject *, struct Sprit
 static void UpdateEventObjectSpriteAnimPause(struct EventObject *, struct Sprite *);
 static bool8 IsCoordOutsideEventObjectMovementRange(struct EventObject *, s16, s16);
 static bool8 IsMetatileDirectionallyImpassable(struct EventObject *, s16, s16, u8);
-static bool8 DoesObjectCollideWithObjectAt(struct EventObject *, s16, s16);
+static u8 DoesObjectCollideWithObjectAt(struct EventObject *, s16, s16);
 static void sub_8096530(struct EventObject *, struct Sprite *);
 static void UpdateEventObjSpriteVisibility(struct EventObject *, struct Sprite *);
 static void EventObjectUpdateMetatileBehaviors(struct EventObject*);
@@ -127,6 +128,8 @@ static void ClearEventObjectMovement(struct EventObject *, struct Sprite *);
 static void EventObjectSetSingleMovement(struct EventObject *, struct Sprite *, u8);
 static void oamt_npc_ministep_reset(struct Sprite *, u8, u8);
 static void UpdateEventObjectSpriteSubpriorityAndVisibility(struct Sprite *);
+static void FaceDirection(struct EventObject *eventObject, struct Sprite *sprite, u8 direction);
+static u8 GetDirectionToFace(s16 x1, s16 y1, s16 x2, s16 y2);
 
 const u8 gReflectionEffectPaletteMap[] = {1, 1, 6, 7, 8, 9, 6, 7, 8, 9, 11, 11, 0, 0, 0, 0};
 
@@ -224,6 +227,7 @@ static void (*const sMovementTypeCallbacks[])(struct Sprite *) =
     [MOVEMENT_TYPE_WALK_SLOWLY_IN_PLACE_UP] = MovementType_WalkSlowlyInPlace,
     [MOVEMENT_TYPE_WALK_SLOWLY_IN_PLACE_LEFT] = MovementType_WalkSlowlyInPlace,
     [MOVEMENT_TYPE_WALK_SLOWLY_IN_PLACE_RIGHT] = MovementType_WalkSlowlyInPlace,
+    [MOVEMENT_TYPE_FOLLOW_PLAYER] = MovementType_FollowPlayer,
 };
 
 const u8 gRangedMovementTypes[] = {
@@ -308,6 +312,7 @@ const u8 gRangedMovementTypes[] = {
     [MOVEMENT_TYPE_WALK_SLOWLY_IN_PLACE_UP] = 0,
     [MOVEMENT_TYPE_WALK_SLOWLY_IN_PLACE_LEFT] = 0,
     [MOVEMENT_TYPE_WALK_SLOWLY_IN_PLACE_RIGHT] = 0,
+    [MOVEMENT_TYPE_FOLLOW_PLAYER] = 0,
 };
 
 const u8 gInitialMovementTypeFacingDirections[] = {
@@ -392,6 +397,7 @@ const u8 gInitialMovementTypeFacingDirections[] = {
     [MOVEMENT_TYPE_WALK_SLOWLY_IN_PLACE_UP] = DIR_NORTH,
     [MOVEMENT_TYPE_WALK_SLOWLY_IN_PLACE_LEFT] = DIR_WEST,
     [MOVEMENT_TYPE_WALK_SLOWLY_IN_PLACE_RIGHT] = DIR_EAST,
+    [MOVEMENT_TYPE_FOLLOW_PLAYER] = DIR_NORTH,
 };
 
 #define EVENT_OBJ_PAL_TAG_0  0x1103
@@ -1683,7 +1689,7 @@ u8 AddPseudoEventObject(u16 graphicsId, void (*callback)(struct Sprite *), s16 x
     return spriteId;
 }
 
-u8 sprite_new(u8 graphicsId, u8 a1, s16 x, s16 y, u8 z, u8 direction)
+u8 sprite_new(u8 graphicsId, u8 eventObjectId, s16 x, s16 y, u8 z, u8 direction)
 {
     u8 spriteId;
     struct Sprite *sprite;
@@ -1710,7 +1716,7 @@ u8 sprite_new(u8 graphicsId, u8 a1, s16 x, s16 y, u8 z, u8 direction)
             sprite->oam.paletteNum -= 16;
         }
         sprite->coordOffsetEnabled = TRUE;
-        sprite->data[0] = a1;
+        sprite->data[0] = eventObjectId;
         sprite->data[1] = z;
         if (graphicsInfo->paletteSlot == 10)
         {
@@ -1730,6 +1736,151 @@ u8 sprite_new(u8 graphicsId, u8 a1, s16 x, s16 y, u8 z, u8 direction)
         StartSpriteAnim(sprite, GetFaceDirectionAnimNum(direction));
     }
     return spriteId;
+}
+
+static void GetSafeCoordsForFollower(struct EventObject *playerEventObject, int playerX, int playerY, int direction, int *followerX, int *followerY)
+{
+    int dx, dy;
+    if (!GetCollisionInDirection(playerEventObject, direction))
+    {
+        switch (direction)
+        {
+        case DIR_SOUTH:
+            dx = 0;
+            dy = 1;
+            break;
+        case DIR_NORTH:
+            dx = 0;
+            dy = -1;
+            break;
+        case DIR_WEST:
+            dx = -1;
+            dy = 0;
+            break;
+        case DIR_EAST:
+            dx = 1;
+            dy = 0;
+            break;
+        default:
+            dx = 1;
+            dy = 0;
+            break;
+        }
+
+        *followerX = playerX + dx;
+        *followerY = playerY + dy;
+    }
+    else if (!GetCollisionInDirection(playerEventObject, DIR_SOUTH))
+    {
+        *followerX = playerX;
+        *followerY = playerY + 1;
+    }
+    else if (!GetCollisionInDirection(playerEventObject, DIR_NORTH))
+    {
+        *followerX = playerX;
+        *followerY = playerY - 1;
+    }
+    else if (!GetCollisionInDirection(playerEventObject, DIR_WEST))
+    {
+        *followerX = playerX - 1;
+        *followerY = playerY;
+    }
+    else
+    {
+        *followerX = playerX + 1;
+        *followerY = playerY;
+    }
+}
+
+const struct EventObjectTemplate gFollowerEventObjectTemplate = {
+    .localId = EVENT_OBJ_ID_FOLLOWER,
+    .graphicsId = 0,
+    .unk2 = 0,
+    .x = 0,
+    .y = 0,
+    .elevation = 0,
+    .movementType = MOVEMENT_TYPE_FOLLOW_PLAYER,
+    .movementRangeX = 0,
+    .movementRangeY = 0,
+    .trainerType = 0,
+    .trainerRange_berryTreeId = 0,
+    .script = 0,
+    .flagId = 0,
+};
+
+u8 CreateFollowerEventObject(u8 graphicsId, const u8 *script, int direction)
+{
+    int i;
+    int x, y;
+    u8 eventObjectId;
+    struct EventObject *followerEventObject;
+    struct EventObject *playerEventObject;
+    struct SpriteTemplate spriteTemplate;
+    struct SpriteFrameImage spriteFrameImage;
+    const struct EventObjectGraphicsInfo *graphicsInfo;
+    const struct SubspriteTable *subspriteTables;
+    struct EventObjectTemplate followerTemplate = gFollowerEventObjectTemplate;
+    s16 cameraX;
+    s16 cameraY;
+    u8 playerObjectId;
+
+    // Ensure the player object exists.
+    if (TryGetEventObjectIdByLocalIdAndMap(EVENT_OBJ_ID_PLAYER, 0, 0, &playerObjectId))
+        return EVENT_OBJECTS_COUNT;
+
+    // Ensure a follower does not already exist.
+    for (i = 0; i < EVENT_OBJECTS_COUNT; i++)
+    {
+        if (gEventObjects[i].active && gEventObjects[i].localId == EVENT_OBJ_ID_FOLLOWER)
+            return;
+    }
+
+    playerEventObject = &gEventObjects[playerObjectId];
+    GetSafeCoordsForFollower(
+        playerEventObject,
+        playerEventObject->currentCoords.x - 7,
+        playerEventObject->currentCoords.y - 7,
+        direction,
+        &x,
+        &y);
+    followerTemplate.x = x;
+    followerTemplate.y = y;
+    followerTemplate.elevation = playerEventObject->currentElevation;
+    followerTemplate.graphicsId = graphicsId;
+    graphicsInfo = GetEventObjectGraphicsInfo(followerTemplate.graphicsId);
+    MakeObjectTemplateFromEventObjectTemplate(&followerTemplate, &spriteTemplate, &subspriteTables);
+    spriteFrameImage.size = graphicsInfo->size;
+    spriteTemplate.images = &spriteFrameImage;
+    GetEventObjectMovingCameraOffset(&cameraX, &cameraY);
+    eventObjectId = TrySetupEventObjectSprite(&followerTemplate, &spriteTemplate, gSaveBlock1Ptr->location.mapNum, gSaveBlock1Ptr->location.mapGroup, cameraX, cameraY);
+    if (eventObjectId == EVENT_OBJECTS_COUNT)
+        return EVENT_OBJECTS_COUNT;
+
+    followerEventObject = &gEventObjects[eventObjectId];
+    gFollowerScript = script;
+    gSprites[followerEventObject->spriteId].images = graphicsInfo->images;
+    if (subspriteTables)
+        SetSubspriteTables(&gSprites[followerEventObject->spriteId], subspriteTables);
+
+    // Face player.
+    FaceDirection(
+        followerEventObject,
+        &gSprites[followerEventObject->spriteId],
+        GetDirectionToFace(followerEventObject->currentCoords.x, followerEventObject->currentCoords.y, playerEventObject->currentCoords.x, playerEventObject->currentCoords.y));
+    return eventObjectId;
+}
+
+void DestroyFollowerEventObject(void)
+{
+    int i;
+    for (i = 0; i < EVENT_OBJECTS_COUNT; i++)
+    {
+        if (gEventObjects[i].active && gEventObjects[i].localId == EVENT_OBJ_ID_FOLLOWER)
+        {
+            RemoveEventObject(&gEventObjects[i]);
+            return;
+        }
+    }
 }
 
 void TrySpawnEventObjects(s16 cameraX, s16 cameraY)
@@ -4695,6 +4846,225 @@ bool8 MovementType_Invisible_Step2(struct EventObject *eventObject, struct Sprit
     return FALSE;
 }
 
+movement_type_def(MovementType_FollowPlayer, gMovementTypeFuncs_FollowPlayer)
+
+bool8 MovementType_FollowPlayer_Step0(struct EventObject *eventObject, struct Sprite *sprite)
+{
+    ClearEventObjectMovement(eventObject, sprite);
+    if (eventObject->directionSequenceIndex == 0)
+        eventObject->directionSequenceIndex = GetPlayerFacingDirection();
+
+    sprite->data[1] = 1;
+    return TRUE;
+}
+
+bool8 MovementType_FollowPlayer_Step1(struct EventObject *eventObject, struct Sprite *sprite)
+{
+    int followableMovement;
+    int repeats;
+
+    if (gEventObjects[gPlayerAvatar.eventObjectId].movementActionId == 0xFF)
+        return FALSE;
+
+    repeats = GET_FOLLOWUP_REPEATS(sprite);
+    if (repeats > 0)
+    {
+        EventObjectSetSingleMovement(eventObject, sprite, GET_FOLLOWUP_MOVEMENT_ACTION(sprite));
+        eventObject->singleMovementActive = 1;
+        sprite->data[1] = 2;
+        repeats--;
+        SET_FOLLOWUP_REPEATS(sprite, repeats);
+        if (repeats == 0)
+        {
+            CLEAR_FOLLOWUP_MOVEMENT(sprite);
+        }
+        return TRUE;
+    }
+
+    followableMovement = PlayerGetFollowableMovement();
+    if (followableMovement == FOLLOWABLE_MOVEMENT_NONE)
+        return FollowPlayerMovement_None(eventObject, sprite, GetPlayerMovementDirection());
+
+    if (GET_FOLLOWUP_MOVEMENT_TYPE(sprite) == FOLLOWUP_MOVEMENT_CROSS_LEDGE)
+    {
+        if (followableMovement == FOLLOWABLE_MOVEMENT_LEDGE_JUMP)
+            return FollowPlayerMovement_None(eventObject, sprite, GetPlayerMovementDirection());
+        else
+            return FollowPlayerMovement_CrossLedge(eventObject, sprite, followableMovement);
+    }
+    else
+    {
+        return gFollowPlayer_SpeedFuncs[followableMovement](eventObject, sprite, GetPlayerMovementDirection());
+    }
+}
+
+bool8 MovementType_FollowPlayer_Step2(struct EventObject *eventObject, struct Sprite *sprite)
+{
+    if (EventObjectExecSingleMovementAction(eventObject, sprite))
+    {
+        eventObject->singleMovementActive = 0;
+        sprite->data[1] = 1;
+    }
+    return FALSE;
+}
+
+static int GetFollowPlayerDirection(int playerX, int playerY, int followerX, int followerY)
+{
+    if (playerX > followerX)
+        return DIR_EAST;
+    if (playerX < followerX)
+        return DIR_WEST;
+    if (playerY > followerY)
+        return DIR_SOUTH;
+    if (playerY < followerY)
+        return DIR_NORTH;
+    
+    return DIR_NONE;
+}
+
+bool8 FollowPlayerMovement_None(struct EventObject *eventObject, struct Sprite *sprite, u8 playerDirection)
+{
+    return FALSE;
+}
+
+bool8 FollowPlayerMovement_GoSpeed0(struct EventObject *eventObject, struct Sprite *sprite, u8 playerDirection)
+{
+    u32 direction;
+    s16 x;
+    s16 y;
+    u8 playerObjectId;
+
+    if (TryGetEventObjectIdByLocalIdAndMap(EVENT_OBJ_ID_PLAYER, 0, 0, &playerObjectId))
+        direction = DIR_NONE;
+
+    direction = GetFollowPlayerDirection(
+        gEventObjects[playerObjectId].previousCoords.x,
+        gEventObjects[playerObjectId].previousCoords.y,
+        eventObject->currentCoords.x,
+        eventObject->currentCoords.y);
+    EventObjectMoveDestCoords(eventObject, direction, &x, &y);
+    EventObjectSetSingleMovement(eventObject, sprite, GetWalkNormalMovementAction(direction));
+    eventObject->singleMovementActive = 1;
+    sprite->data[1] = 2;
+    return TRUE;
+}
+
+bool8 FollowPlayerMovement_GoSpeed1(struct EventObject *eventObject, struct Sprite *sprite, u8 playerDirection)
+{
+    u32 direction;
+    s16 x;
+    s16 y;
+    u8 playerObjectId;
+
+    if (TryGetEventObjectIdByLocalIdAndMap(EVENT_OBJ_ID_PLAYER, 0, 0, &playerObjectId))
+        direction = DIR_NONE;
+
+    direction = GetFollowPlayerDirection(
+        gEventObjects[playerObjectId].previousCoords.x,
+        gEventObjects[playerObjectId].previousCoords.y,
+        eventObject->currentCoords.x,
+        eventObject->currentCoords.y);
+    EventObjectMoveDestCoords(eventObject, direction, &x, &y);
+    EventObjectSetSingleMovement(eventObject, sprite, GetWalkFastMovementAction(direction));
+    eventObject->singleMovementActive = 1;
+    sprite->data[1] = 2;
+    return TRUE;
+}
+
+bool8 FollowPlayerMovement_GoSpeed2(struct EventObject *eventObject, struct Sprite *sprite, u8 playerDirection)
+{
+    u32 direction;
+    s16 x;
+    s16 y;
+    u8 playerObjectId;
+
+    if (TryGetEventObjectIdByLocalIdAndMap(EVENT_OBJ_ID_PLAYER, 0, 0, &playerObjectId))
+        direction = DIR_NONE;
+
+    direction = GetFollowPlayerDirection(
+        gEventObjects[playerObjectId].previousCoords.x,
+        gEventObjects[playerObjectId].previousCoords.y,
+        eventObject->currentCoords.x,
+        eventObject->currentCoords.y);
+    EventObjectMoveDestCoords(eventObject, direction, &x, &y);
+    EventObjectSetSingleMovement(eventObject, sprite, GetWalkFastestMovementAction(direction));
+    eventObject->singleMovementActive = 1;
+    sprite->data[1] = 2;
+    return TRUE;
+}
+
+bool8 FollowPlayerMovement_JumpLedge(struct EventObject *eventObject, struct Sprite *sprite, u8 playerDirection)
+{
+    u32 direction;
+    s16 x;
+    s16 y;
+    u8 playerObjectId;
+
+    if (TryGetEventObjectIdByLocalIdAndMap(EVENT_OBJ_ID_PLAYER, 0, 0, &playerObjectId))
+        direction = DIR_NONE;
+
+    direction = GetFollowPlayerDirection(
+        gEventObjects[playerObjectId].previousCoords.x,
+        gEventObjects[playerObjectId].previousCoords.y,
+        eventObject->currentCoords.x,
+        eventObject->currentCoords.y);
+    EventObjectMoveDestCoords(eventObject, direction, &x, &y);
+    EventObjectSetSingleMovement(eventObject, sprite, GetWalkSlowMovementAction(direction));
+    eventObject->singleMovementActive = 1;
+    sprite->data[1] = 2;
+    SET_FOLLOWUP_MOVEMENT_TYPE(sprite, FOLLOWUP_MOVEMENT_CROSS_LEDGE);
+    return TRUE;
+}
+
+bool8 FollowPlayerMovement_CrossLedge(struct EventObject *eventObject, struct Sprite *sprite, int followableMovement)
+{
+    u32 direction;
+    s16 x;
+    s16 y;
+    u8 playerObjectId;
+    int movementAction;
+
+    if (TryGetEventObjectIdByLocalIdAndMap(EVENT_OBJ_ID_PLAYER, 0, 0, &playerObjectId))
+        direction = DIR_NONE;
+
+    direction = GetFollowPlayerDirection(
+        gEventObjects[playerObjectId].previousCoords.x,
+        gEventObjects[playerObjectId].previousCoords.y,
+        eventObject->currentCoords.x,
+        eventObject->currentCoords.y);
+    EventObjectMoveDestCoords(eventObject, direction, &x, &y);
+
+    switch (followableMovement)
+    {
+    case 0:
+        movementAction = GetFaceDirectionMovementAction(direction);
+        break;
+    case 1:
+        movementAction = GetWalkFastMovementAction(direction);
+        SET_FOLLOWUP_REPEATS(sprite, 1);
+        SET_FOLLOWUP_MOVEMENT_ACTION(sprite, movementAction);
+        break;
+    case 2:
+        movementAction = GetWalkFastestMovementAction(direction);
+        SET_FOLLOWUP_REPEATS(sprite, 1);
+        SET_FOLLOWUP_MOVEMENT_ACTION(sprite, movementAction);
+        break;
+    case 3:
+        movementAction = GetWalkFastMovementAction(direction);
+        SET_FOLLOWUP_REPEATS(sprite, 1);
+        SET_FOLLOWUP_MOVEMENT_ACTION(sprite, movementAction);
+        break;
+    default:
+        movementAction = GetFaceDirectionMovementAction(direction);
+        break;
+    }
+
+    EventObjectSetSingleMovement(eventObject, sprite, movementAction);
+    eventObject->singleMovementActive = 1;
+    sprite->data[1] = 2;
+    return TRUE;
+}
+
 static void ClearEventObjectMovement(struct EventObject *eventObject, struct Sprite *sprite)
 {
     eventObject->singleMovementActive = 0;
@@ -4840,7 +5210,7 @@ void obj_npc_animation_step(struct EventObject *eventObject, struct Sprite *spri
 
 // file boundary?
 
-u8 GetDirectionToFace(s16 x1, s16 y1, s16 x2, s16 y2)
+static u8 GetDirectionToFace(s16 x1, s16 y1, s16 x2, s16 y2)
 {
     if (x1 > x2)
     {
@@ -4884,6 +5254,7 @@ static u8 GetCollisionInDirection(struct EventObject *eventObject, u8 direction)
 u8 GetCollisionAtCoords(struct EventObject *eventObject, s16 x, s16 y, u32 dirn)
 {
     u8 direction;
+    int objectCollision;
 
     direction = dirn;
     if (IsCoordOutsideEventObjectMovementRange(eventObject, x, y))
@@ -4894,8 +5265,13 @@ u8 GetCollisionAtCoords(struct EventObject *eventObject, s16 x, s16 y, u32 dirn)
         return 2;
     else if (IsZCoordMismatchAt(eventObject->currentElevation, x, y))
         return 3;
-    else if (DoesObjectCollideWithObjectAt(eventObject, x, y))
+
+    objectCollision = DoesObjectCollideWithObjectAt(eventObject, x, y);
+    if (objectCollision == 1)
         return 4;
+    else if (objectCollision == 2)
+        return 5;
+
     return 0;
 }
 
@@ -4952,7 +5328,7 @@ static bool8 IsMetatileDirectionallyImpassable(struct EventObject *eventObject, 
     return FALSE;
 }
 
-static bool8 DoesObjectCollideWithObjectAt(struct EventObject *eventObject, s16 x, s16 y)
+static u8 DoesObjectCollideWithObjectAt(struct EventObject *eventObject, s16 x, s16 y)
 {
     u8 i;
     struct EventObject *curObject;
@@ -4966,7 +5342,10 @@ static bool8 DoesObjectCollideWithObjectAt(struct EventObject *eventObject, s16 
             {
                 if (AreZCoordsCompatible(eventObject->currentElevation, curObject->currentElevation))
                 {
-                    return TRUE;
+                    if (curObject->localId == EVENT_OBJ_ID_FOLLOWER)
+                        return 2;
+                    else
+                        return 1;
                 }
             }
         }
@@ -8011,8 +8390,21 @@ u8 ZCoordToPriority(u8 z)
 
 void EventObjectUpdateZCoord(struct EventObject *eventObj)
 {
-    u8 z = MapGridGetZCoordAt(eventObj->currentCoords.x, eventObj->currentCoords.y);
-    u8 z2 = MapGridGetZCoordAt(eventObj->previousCoords.x, eventObj->previousCoords.y);
+    u8 z, z2;
+
+    if (eventObj->localId == EVENT_OBJ_ID_FOLLOWER)
+    {
+        // The follower should always have the same elevation as the player, otherwise the player's sprite can
+        // cover the follower when switching elevations.
+        struct EventObject *playerObj = &gEventObjects[gPlayerAvatar.eventObjectId];
+        z = MapGridGetZCoordAt(playerObj->currentCoords.x, playerObj->currentCoords.y);
+        z2 = MapGridGetZCoordAt(playerObj->previousCoords.x, playerObj->previousCoords.y);
+    }
+    else
+    {
+        z = MapGridGetZCoordAt(eventObj->currentCoords.x, eventObj->currentCoords.y);
+        z2 = MapGridGetZCoordAt(eventObj->previousCoords.x, eventObj->previousCoords.y);
+    }
 
     if (z == 0xF || z2 == 0xF)
         return;

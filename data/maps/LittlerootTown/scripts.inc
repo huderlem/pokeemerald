@@ -371,7 +371,7 @@ LittlerootTown_EventScript_1E811F:: @ 81E811F
 	end
 
 LittlerootTown_EventScript_1E8151:: @ 81E8151
-	msgbox LittlerootTown_Text_1E8D32, MSGBOX_SIGN
+	createfollower EVENT_OBJ_GFX_GIRL_1, LittlerootTown_EventScript_1E8034, 1
 	end
 
 LittlerootTown_EventScript_1E815A:: @ 81E815A
