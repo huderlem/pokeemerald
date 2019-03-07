@@ -1,4 +1,5 @@
 #include "global.h"
+#include "alloc.h"
 #include "sprite.h"
 #include "main.h"
 #include "palette.h"
@@ -44,7 +45,7 @@ static void BuildSpritePriorities(void);
 static void SortSprites(void);
 static void CopyMatricesToOamBuffer(void);
 static void AddSpritesToOamBuffer(void);
-static u8 CreateSpriteAt(u8 index, const struct SpriteTemplate *template, s16 x, s16 y, u8 subpriority);
+static u8 CreateSpriteAt(u8 index, const struct SpriteTemplate *template, s16 x, s16 y, u8 subpriority, bool8 inSpriteStack);
 static void ResetOamMatrices(void);
 static void ResetSprite(struct Sprite *sprite);
 static s16 AllocSpriteTiles(u16 tileCount);
@@ -518,7 +519,7 @@ u8 CreateSprite(const struct SpriteTemplate *template, s16 x, s16 y, u8 subprior
 
     for (i = 0; i < MAX_SPRITES; i++)
         if (!gSprites[i].inUse)
-            return CreateSpriteAt(i, template, x, y, subpriority);
+            return CreateSpriteAt(i, template, x, y, subpriority, FALSE);
 
     return MAX_SPRITES;
 }
@@ -529,7 +530,7 @@ u8 CreateSpriteAtEnd(const struct SpriteTemplate *template, s16 x, s16 y, u8 sub
 
     for (i = MAX_SPRITES - 1; i > -1; i--)
         if (!gSprites[i].inUse)
-            return CreateSpriteAt(i, template, x, y, subpriority);
+            return CreateSpriteAt(i, template, x, y, subpriority, FALSE);
 
     return MAX_SPRITES;
 }
@@ -550,7 +551,7 @@ u8 CreateInvisibleSprite(void (*callback)(struct Sprite *))
     }
 }
 
-u8 CreateSpriteAt(u8 index, const struct SpriteTemplate *template, s16 x, s16 y, u8 subpriority)
+static u8 CreateSpriteAt(u8 index, const struct SpriteTemplate *template, s16 x, s16 y, u8 subpriority, bool8 inSpriteStack)
 {
     struct Sprite *sprite = &gSprites[index];
 
@@ -592,7 +593,7 @@ u8 CreateSpriteAt(u8 index, const struct SpriteTemplate *template, s16 x, s16 y,
         SetSpriteSheetFrameTileNum(sprite);
     }
 
-    if (sprite->oam.affineMode & ST_OAM_AFFINE_ON_MASK)
+    if (!inSpriteStack && sprite->oam.affineMode & ST_OAM_AFFINE_ON_MASK)
         InitSpriteAffineAnim(sprite);
 
     if (template->paletteTag != 0xFFFF)
@@ -611,7 +612,7 @@ u8 CreateSpriteAndAnimate(const struct SpriteTemplate *template, s16 x, s16 y, u
 
         if (!gSprites[i].inUse)
         {
-            u8 index = CreateSpriteAt(i, template, x, y, subpriority);
+            u8 index = CreateSpriteAt(i, template, x, y, subpriority, FALSE);
 
             if (index == MAX_SPRITES)
                 return MAX_SPRITES;
@@ -1755,4 +1756,107 @@ bool8 AddSubspritesToOamBuffer(struct Sprite *sprite, struct OamData *destOam, u
     }
 
     return 0;
+}
+
+struct SpriteStack *CreateSpriteStack(const struct SpriteStackTemplate *template, s16 x, s16 y, u8 subpriority)
+{
+    int i, j;
+    int numSpriteIds;
+    u8 spriteId;
+    u8 matrixNum;
+    u8 spriteIds[MAX_SPRITE_STACK_LAYERS];
+
+    numSpriteIds = 0;
+    for (i = 0; i < template->numLayers && i < MAX_SPRITE_STACK_LAYERS; i++)
+    {
+        spriteId = MAX_SPRITES;
+        for (j = 0; j < MAX_SPRITES; j++)
+        {
+            if (!gSprites[j].inUse)
+            {
+                // Adjust the Y coordinate and subpriorty up by 1 on each layer.
+                spriteId = CreateSpriteAt(j, template->spriteTemplates[i], x, y - i * template->layerHeight, max(subpriority - i, 0), TRUE);
+                break;
+            }
+        }
+
+        if (spriteId != MAX_SPRITES)
+            spriteIds[numSpriteIds++] = spriteId;
+    }
+
+    if (numSpriteIds > 0)
+    {
+        struct SpriteStack *spriteStack = Alloc(sizeof(struct SpriteStack));
+        spriteStack->numLayers = numSpriteIds;
+        spriteStack->spriteIds = Alloc(numSpriteIds * sizeof(u8));
+        memcpy(spriteStack->spriteIds, spriteIds, numSpriteIds * sizeof(u8));
+
+        // All sprites in the sprite stack share the same transformation matrix.
+        matrixNum = AllocOamMatrix();
+        if (matrixNum != 0xFF)
+        {
+            for (i = 0; i < numSpriteIds; i++)
+            {
+                struct Sprite *sprite = &gSprites[spriteIds[i]];
+
+                // Only assign the affine anims to the first sprite.
+                if (template->affineAnims && i == 0)
+                    sprite->affineAnims = template->affineAnims;
+
+                CalcCenterToCornerVec(sprite, sprite->oam.shape, sprite->oam.size, sprite->oam.affineMode);
+                sprite->oam.matrixNum = matrixNum;
+                sprite->affineAnimBeginning = TRUE;
+                AffineAnimStateReset(matrixNum);
+            }
+        }
+
+        return spriteStack;
+    }
+    else
+    {
+        return NULL;
+    }
+}
+
+void DestroySpriteStack(struct SpriteStack *spriteStack)
+{
+    int i;
+
+    for (i = 0; i < spriteStack->numLayers; i++)
+    {
+        u8 spriteId = spriteStack->spriteIds[i];
+        if (spriteId != MAX_SPRITES)
+            DestroySprite(&gSprites[spriteId]);
+    }
+
+    Free(spriteStack);
+}
+
+void DestroySpriteStackAndFreeResources(struct SpriteStack *spriteStack)
+{
+    int i;
+
+    for (i = 0; i < spriteStack->numLayers; i++)
+    {
+        u8 spriteId = spriteStack->spriteIds[i];
+        if (spriteId != MAX_SPRITES)
+            DestroySpriteAndFreeResources(&gSprites[spriteId]);
+    }
+
+    Free(spriteStack);
+}
+
+void SetSpriteStackPosition(struct SpriteStack *spriteStack, s16 x, s16 y)
+{
+    int i;
+
+    for (i = 0; i < spriteStack->numLayers; i++)
+    {
+        u8 spriteId = spriteStack->spriteIds[i];
+        if (spriteId != MAX_SPRITES)
+        {
+            gSprites[spriteId].pos1.x = x;
+            gSprites[spriteId].pos1.y = y;
+        }
+    }
 }

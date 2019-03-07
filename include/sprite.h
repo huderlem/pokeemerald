@@ -315,4 +315,24 @@ u8 SpriteTileAllocBitmapOp(u16 bit, u8 op);
 void ClearSpriteCopyRequests(void);
 void ResetAffineAnimData(void);
 
+#define MAX_SPRITE_STACK_LAYERS 32
+
+struct SpriteStackTemplate
+{
+    u8 numLayers;
+    u8 layerHeight;
+    const struct SpriteTemplate *const *spriteTemplates;
+    const union AffineAnimCmd *const *affineAnims;
+};
+
+struct SpriteStack
+{
+    u8 numLayers;
+    u8 *spriteIds;
+};
+
+struct SpriteStack *CreateSpriteStack(const struct SpriteStackTemplate *template, s16 x, s16 y, u8 subpriority);
+void DestroySpriteStack(struct SpriteStack *spriteStack);
+void DestroySpriteStackAndFreeResources(struct SpriteStack *spriteStack);
+
 #endif //GUARD_SPRITE_H
