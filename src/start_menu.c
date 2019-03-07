@@ -1,4 +1,5 @@
 #include "global.h"
+#include "decompress.h"
 #include "start_menu.h"
 #include "menu.h"
 #include "safari_zone.h"
@@ -39,6 +40,7 @@
 #include "battle_pyramid_bag.h"
 #include "battle_pike.h"
 #include "new_game.h"
+#include "sprite.h"
 
 // Menu actions
 enum
@@ -82,6 +84,7 @@ EWRAM_DATA static u8 (*sSaveDialogCallback)(void) = NULL;
 EWRAM_DATA static u8 sSaveDialogTimer = 0;
 EWRAM_DATA static bool8 sSavingComplete = FALSE;
 EWRAM_DATA static u8 sSaveInfoWindowId = 0;
+EWRAM_DATA static struct SpriteStack *sSpriteStack = NULL;
 
 // Extern variables.
 extern u8 gLocalLinkPlayerId;
@@ -200,6 +203,290 @@ static const struct WindowTemplate sUnknown_085105AC[] =
 
 static const struct WindowTemplate sSaveInfoWindowTemplate = {0, 1, 1, 0xE, 0xA, 0xF, 8};
 
+#define TAG_STACK_0 12345
+#define TAG_STACK_1 12346
+#define TAG_STACK_2 12347
+#define TAG_STACK_3 12348
+#define TAG_STACK_4 12349
+#define TAG_STACK_5 12350
+#define TAG_STACK_6 12351
+#define TAG_STACK_7 12352
+#define TAG_STACK_8 12353
+#define TAG_STACK_9 12354
+#define TAG_STACK_10 12355
+#define TAG_STACK_11 12356
+
+static const u32 sStackGfx0[] = INCBIN_U32("graphics/misc/stack_0.4bpp.lz");
+static const u32 sStackGfx1[] = INCBIN_U32("graphics/misc/stack_1.4bpp.lz");
+static const u32 sStackGfx2[] = INCBIN_U32("graphics/misc/stack_2.4bpp.lz");
+static const u32 sStackGfx3[] = INCBIN_U32("graphics/misc/stack_3.4bpp.lz");
+static const u32 sStackGfx4[] = INCBIN_U32("graphics/misc/stack_4.4bpp.lz");
+static const u32 sStackGfx5[] = INCBIN_U32("graphics/misc/stack_5.4bpp.lz");
+static const u32 sStackGfx6[] = INCBIN_U32("graphics/misc/stack_6.4bpp.lz");
+static const u32 sStackGfx7[] = INCBIN_U32("graphics/misc/stack_7.4bpp.lz");
+static const u32 sStackGfx8[] = INCBIN_U32("graphics/misc/stack_8.4bpp.lz");
+static const u32 sStackGfx9[] = INCBIN_U32("graphics/misc/stack_9.4bpp.lz");
+static const u32 sStackGfx10[] = INCBIN_U32("graphics/misc/stack_10.4bpp.lz");
+static const u32 sStackGfx11[] = INCBIN_U32("graphics/misc/stack_11.4bpp.lz");
+static const u16 sStackGfx0Palette[] = INCBIN_U16("graphics/misc/stack_0.gbapal");
+
+static const struct CompressedSpriteSheet sStack0SpriteSheet = {
+    .data = sStackGfx0,
+    .size = 0x200,
+    .tag = TAG_STACK_0,
+};
+
+static const struct CompressedSpriteSheet sStack1SpriteSheet = {
+    .data = sStackGfx1,
+    .size = 0x200,
+    .tag = TAG_STACK_1,
+};
+
+static const struct CompressedSpriteSheet sStack2SpriteSheet = {
+    .data = sStackGfx2,
+    .size = 0x200,
+    .tag = TAG_STACK_2,
+};
+
+static const struct CompressedSpriteSheet sStack3SpriteSheet = {
+    .data = sStackGfx3,
+    .size = 0x200,
+    .tag = TAG_STACK_3,
+};
+
+static const struct CompressedSpriteSheet sStack4SpriteSheet = {
+    .data = sStackGfx4,
+    .size = 0x200,
+    .tag = TAG_STACK_4,
+};
+
+static const struct CompressedSpriteSheet sStack5SpriteSheet = {
+    .data = sStackGfx5,
+    .size = 0x200,
+    .tag = TAG_STACK_5,
+};
+
+static const struct CompressedSpriteSheet sStack6SpriteSheet = {
+    .data = sStackGfx6,
+    .size = 0x200,
+    .tag = TAG_STACK_6,
+};
+
+static const struct CompressedSpriteSheet sStack7SpriteSheet = {
+    .data = sStackGfx7,
+    .size = 0x200,
+    .tag = TAG_STACK_7,
+};
+
+static const struct CompressedSpriteSheet sStack8SpriteSheet = {
+    .data = sStackGfx8,
+    .size = 0x200,
+    .tag = TAG_STACK_8,
+};
+
+static const struct CompressedSpriteSheet sStack9SpriteSheet = {
+    .data = sStackGfx9,
+    .size = 0x200,
+    .tag = TAG_STACK_9,
+};
+
+static const struct CompressedSpriteSheet sStack10SpriteSheet = {
+    .data = sStackGfx10,
+    .size = 0x200,
+    .tag = TAG_STACK_10,
+};
+
+static const struct CompressedSpriteSheet sStack11SpriteSheet = {
+    .data = sStackGfx11,
+    .size = 0x200,
+    .tag = TAG_STACK_11,
+};
+
+static const struct SpritePalette sStackPalettes[] = {
+    {sStackGfx0Palette, TAG_STACK_0},
+    {0},
+};
+
+static const struct OamData sSpriteStackOamData = {
+    .y = 0,
+    .affineMode = ST_OAM_AFFINE_DOUBLE,
+    .objMode = ST_OAM_OBJ_NORMAL,
+    .mosaic = 0,
+    .bpp = ST_OAM_4BPP,
+    .shape = ST_OAM_SQUARE,
+    .x = 0,
+    .matrixNum = 0,
+    .size = 2,
+    .tileNum = 0,
+    .priority = 1,
+    .paletteNum = 0,
+    .affineParam = 0,
+};
+
+static const union AffineAnimCmd sSpriteStackAnimCmd0[] =
+{
+    AFFINEANIMCMD_FRAME(0x0, 0x0, 1, 1),
+    AFFINEANIMCMD_JUMP(0),
+};
+
+static const union AffineAnimCmd *const sSpriteStackAnimCmds[] =
+{
+    sSpriteStackAnimCmd0,
+};
+
+static const struct SpriteTemplate sStack0_SpriteTemplate = {
+    .tileTag = TAG_STACK_0,
+    .paletteTag = TAG_STACK_0,
+    .oam = &sSpriteStackOamData,
+    .anims = gDummySpriteAnimTable,
+    .images = NULL,
+    .affineAnims = gDummySpriteAffineAnimTable,
+    .callback = SpriteCallbackDummy,
+};
+
+static const struct SpriteTemplate sStack1_SpriteTemplate = {
+    .tileTag = TAG_STACK_1,
+    .paletteTag = TAG_STACK_0,
+    .oam = &sSpriteStackOamData,
+    .anims = gDummySpriteAnimTable,
+    .images = NULL,
+    .affineAnims = gDummySpriteAffineAnimTable,
+    .callback = SpriteCallbackDummy,
+};
+
+static const struct SpriteTemplate sStack2_SpriteTemplate = {
+    .tileTag = TAG_STACK_2,
+    .paletteTag = TAG_STACK_0,
+    .oam = &sSpriteStackOamData,
+    .anims = gDummySpriteAnimTable,
+    .images = NULL,
+    .affineAnims = gDummySpriteAffineAnimTable,
+    .callback = SpriteCallbackDummy,
+};
+
+static const struct SpriteTemplate sStack3_SpriteTemplate = {
+    .tileTag = TAG_STACK_3,
+    .paletteTag = TAG_STACK_0,
+    .oam = &sSpriteStackOamData,
+    .anims = gDummySpriteAnimTable,
+    .images = NULL,
+    .affineAnims = gDummySpriteAffineAnimTable,
+    .callback = SpriteCallbackDummy,
+};
+
+static const struct SpriteTemplate sStack4_SpriteTemplate = {
+    .tileTag = TAG_STACK_4,
+    .paletteTag = TAG_STACK_0,
+    .oam = &sSpriteStackOamData,
+    .anims = gDummySpriteAnimTable,
+    .images = NULL,
+    .affineAnims = gDummySpriteAffineAnimTable,
+    .callback = SpriteCallbackDummy,
+};
+
+static const struct SpriteTemplate sStack5_SpriteTemplate = {
+    .tileTag = TAG_STACK_5,
+    .paletteTag = TAG_STACK_0,
+    .oam = &sSpriteStackOamData,
+    .anims = gDummySpriteAnimTable,
+    .images = NULL,
+    .affineAnims = gDummySpriteAffineAnimTable,
+    .callback = SpriteCallbackDummy,
+};
+
+static const struct SpriteTemplate sStack6_SpriteTemplate = {
+    .tileTag = TAG_STACK_6,
+    .paletteTag = TAG_STACK_0,
+    .oam = &sSpriteStackOamData,
+    .anims = gDummySpriteAnimTable,
+    .images = NULL,
+    .affineAnims = gDummySpriteAffineAnimTable,
+    .callback = SpriteCallbackDummy,
+};
+
+static const struct SpriteTemplate sStack7_SpriteTemplate = {
+    .tileTag = TAG_STACK_7,
+    .paletteTag = TAG_STACK_0,
+    .oam = &sSpriteStackOamData,
+    .anims = gDummySpriteAnimTable,
+    .images = NULL,
+    .affineAnims = gDummySpriteAffineAnimTable,
+    .callback = SpriteCallbackDummy,
+};
+
+static const struct SpriteTemplate sStack8_SpriteTemplate = {
+    .tileTag = TAG_STACK_8,
+    .paletteTag = TAG_STACK_0,
+    .oam = &sSpriteStackOamData,
+    .anims = gDummySpriteAnimTable,
+    .images = NULL,
+    .affineAnims = gDummySpriteAffineAnimTable,
+    .callback = SpriteCallbackDummy,
+};
+
+static const struct SpriteTemplate sStack9_SpriteTemplate = {
+    .tileTag = TAG_STACK_9,
+    .paletteTag = TAG_STACK_0,
+    .oam = &sSpriteStackOamData,
+    .anims = gDummySpriteAnimTable,
+    .images = NULL,
+    .affineAnims = gDummySpriteAffineAnimTable,
+    .callback = SpriteCallbackDummy,
+};
+
+static const struct SpriteTemplate sStack10_SpriteTemplate = {
+    .tileTag = TAG_STACK_10,
+    .paletteTag = TAG_STACK_0,
+    .oam = &sSpriteStackOamData,
+    .anims = gDummySpriteAnimTable,
+    .images = NULL,
+    .affineAnims = gDummySpriteAffineAnimTable,
+    .callback = SpriteCallbackDummy,
+};
+
+static const struct SpriteTemplate sStack11_SpriteTemplate = {
+    .tileTag = TAG_STACK_11,
+    .paletteTag = TAG_STACK_0,
+    .oam = &sSpriteStackOamData,
+    .anims = gDummySpriteAnimTable,
+    .images = NULL,
+    .affineAnims = gDummySpriteAffineAnimTable,
+    .callback = SpriteCallbackDummy,
+};
+
+static const struct SpriteTemplate *const sStackSpriteTemplates[] = {
+    &sStack0_SpriteTemplate,
+    &sStack0_SpriteTemplate,
+    &sStack0_SpriteTemplate,
+    &sStack0_SpriteTemplate,
+    &sStack2_SpriteTemplate,
+    &sStack2_SpriteTemplate,
+    &sStack0_SpriteTemplate,
+    &sStack0_SpriteTemplate,
+    &sStack0_SpriteTemplate,
+    &sStack0_SpriteTemplate,
+    &sStack1_SpriteTemplate,
+    &sStack1_SpriteTemplate,
+    &sStack1_SpriteTemplate,
+    &sStack1_SpriteTemplate,
+    &sStack3_SpriteTemplate,
+    &sStack4_SpriteTemplate,
+    &sStack5_SpriteTemplate,
+    &sStack6_SpriteTemplate,
+    &sStack7_SpriteTemplate,
+    &sStack8_SpriteTemplate,
+    &sStack9_SpriteTemplate,
+    &sStack10_SpriteTemplate,
+    &sStack11_SpriteTemplate,
+};
+
+static const struct SpriteStackTemplate sStackTemplate = {
+    .numLayers = ARRAY_COUNT(sStackSpriteTemplates),
+    .layerHeight = 1,
+    .spriteTemplates = sStackSpriteTemplates,
+    .affineAnims = sSpriteStackAnimCmds,
+};
+
 // Local functions
 static void BuildStartMenuActions(void);
 static void AddStartMenuAction(u8 action);
@@ -212,6 +499,7 @@ static void BuildBattlePyramidStartMenu(void);
 static void BuildMultiBattleRoomStartMenu(void);
 static void ShowSafariBallsWindow(void);
 static void ShowPyramidFloorWindow(void);
+static void ShowSpriteStack(void);
 static void RemoveExtraStartMenuWindows(void);
 static bool32 PrintStartMenuActions(s8 *pIndex, u32 count);
 static bool32 InitStartMenuStep(void);
@@ -398,6 +686,24 @@ static void ShowPyramidFloorWindow(void)
     CopyWindowToVram(sBattlePyramidFloorWindowId, 2);
 }
 
+static void ShowSpriteStack(void)
+{
+    LoadCompressedSpriteSheet(&sStack0SpriteSheet);
+    LoadCompressedSpriteSheet(&sStack1SpriteSheet);
+    LoadCompressedSpriteSheet(&sStack2SpriteSheet);
+    LoadCompressedSpriteSheet(&sStack3SpriteSheet);
+    LoadCompressedSpriteSheet(&sStack4SpriteSheet);
+    LoadCompressedSpriteSheet(&sStack5SpriteSheet);
+    LoadCompressedSpriteSheet(&sStack6SpriteSheet);
+    LoadCompressedSpriteSheet(&sStack7SpriteSheet);
+    LoadCompressedSpriteSheet(&sStack8SpriteSheet);
+    LoadCompressedSpriteSheet(&sStack9SpriteSheet);
+    LoadCompressedSpriteSheet(&sStack10SpriteSheet);
+    LoadCompressedSpriteSheet(&sStack11SpriteSheet);
+    LoadSpritePalettes(sStackPalettes);
+    sSpriteStack = CreateSpriteStack(&sStackTemplate, 32, 64, sStackTemplate.numLayers);
+}
+
 static void RemoveExtraStartMenuWindows(void)
 {
     if (GetSafariZoneFlag())
@@ -468,6 +774,9 @@ static bool32 InitStartMenuStep(void)
             ShowSafariBallsWindow();
         if (InBattlePyramid())
             ShowPyramidFloorWindow();
+
+        ShowSpriteStack();
+
         sUnknown_02037619[0]++;
         break;
     case 4:
@@ -1384,9 +1693,16 @@ void sub_80A08CC(void) // Referenced in data/specials.inc and data/scripts/maps/
     gTasks[CreateTask(sub_80A08A4, 0x6)].data[1] = taskId;
 }
 
+void RemoveSpriteStack(void)
+{
+    if (sSpriteStack)
+        DestroySpriteStackAndFreeResources(sSpriteStack);
+}
+
 static void HideStartMenuWindow(void)
 {
     ClearStdWindowAndFrame(GetStartMenuWindowId(), TRUE);
+    RemoveSpriteStack();
     RemoveStartMenuWindow();
     ScriptUnfreezeEventObjects();
     ScriptContext2_Disable();
