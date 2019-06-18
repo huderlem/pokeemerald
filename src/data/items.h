@@ -3244,15 +3244,17 @@ const struct Item gItems[] =
         .fieldUseFunc = ItemUseOutOfBattle_CannotUse,
     },
 
-    [ITEM_10B] =
+    [ITEM_SEAL_CASE] =
     {
-        .name = _("????????"),
-        .itemId = ITEM_NONE,
+        .name = _("SEAL CASE"),
+        .itemId = ITEM_SEAL_CASE,
         .price = 0,
-        .description = sDummyDesc,
-        .pocket = POCKET_ITEMS,
-        .type = ITEM_USE_BAG_MENU,
-        .fieldUseFunc = ItemUseOutOfBattle_CannotUse,
+        .description = sSealCaseDesc,
+        .importance = 1,
+        .registrability = TRUE,
+        .pocket = POCKET_KEY_ITEMS,
+        .type = ITEM_USE_PBLOCK_CASE,
+        .fieldUseFunc = ItemUseOutOfBattle_SealCase,
     },
 
     [ITEM_WAILMER_PAIL] =

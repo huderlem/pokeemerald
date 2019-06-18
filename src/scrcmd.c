@@ -2308,3 +2308,12 @@ bool8 ScrCmd_warpwhitefade(struct ScriptContext *ctx)
     ResetInitialPlayerAvatarState();
     return TRUE;
 }
+
+bool8 ScrCmd_giveballseal(struct ScriptContext *ctx)
+{
+    u8 ballSeal = ScriptReadByte(ctx);
+    u8 offset = ballSeal / 8;
+    u8 bit = ballSeal % 8;
+    gSaveBlock1Ptr->ownedBallSeals[offset] |= (1 << bit);
+    return FALSE;
+}

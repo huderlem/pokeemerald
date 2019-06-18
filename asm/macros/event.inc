@@ -1730,6 +1730,12 @@
 	.2byte \quantity
 	.endm
 
+	@ Unlocks a ball seal for the player.
+	.macro giveballseal seal:req
+	.byte 0xe3
+	.byte \seal
+	.endm
+
 
 @ Supplementary
 

@@ -19,6 +19,13 @@ enum
     SCROLL_ARROW_DOWN
 };
 
+enum
+{
+    LIST_ITEM_ALIGN_LEFT,
+    LIST_ITEM_ALIGN_CENTER,
+    LIST_ITEM_ALIGN_RIGHT,
+};
+
 struct ListMenu;
 
 struct ListMenuItem
@@ -45,8 +52,10 @@ struct ListMenuTemplate
     u8 lettersSpacing:3;
     u8 itemVerticalPadding:3;
     u8 scrollMultiple:2; // x40, x80 = xC0
-    u8 fontId:6; // x1, x2, x4, x8, x10, x20 = x3F
+    u8 fontId:3; // x1, x2, x4, x8, x10, x20 = x3F
     u8 cursorKind:2; // x40, x80
+    u8 itemAlign:2;
+    u8 highlightSelection:1;
 };
 
 struct ListMenu
@@ -54,10 +63,7 @@ struct ListMenu
     struct ListMenuTemplate template;
     u16 scrollOffset;
     u16 selectedRow;
-    u8 unk_1C;
-    u8 unk_1D;
     u8 taskId;
-    u8 unk_1F;
 };
 
 struct ListMenuWindowRect

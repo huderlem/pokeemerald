@@ -1,5 +1,6 @@
 #include "global.h"
 #include "item_use.h"
+#include "ball_seal_screen.h"
 #include "battle.h"
 #include "battle_pyramid.h"
 #include "battle_pyramid_bag.h"
@@ -70,6 +71,8 @@ static void Task_UseRepel(u8 taskId);
 static void Task_CloseCantUseKeyItemMessage(u8 taskId);
 static void SetDistanceOfClosestHiddenItem(u8 taskId, s16 x, s16 y);
 static void CB2_OpenPokeblockFromBag(void);
+static void CB2_OpenSealCaseFromBag(void);
+static void Task_OpenRegisteredSealCase(u8 taskId);
 
 // EWRAM variables
 EWRAM_DATA static void(*sItemUseOnFieldCB)(u8 taskId) = NULL;
@@ -640,6 +643,40 @@ static void Task_OpenRegisteredPokeblockCase(u8 taskId)
     {
         CleanupOverworldWindowsAndTilemaps();
         OpenPokeblockCase(PBLOCK_CASE_FIELD, CB2_ReturnToField);
+        DestroyTask(taskId);
+    }
+}
+
+void ItemUseOutOfBattle_SealCase(u8 taskId)
+{
+    if (MenuHelpers_IsLinkActive() == TRUE)
+    {
+        DisplayDadsAdviceCannotUseItemMessage(taskId, gTasks[taskId].tUsingRegisteredKeyItem);
+    }
+    else if (gTasks[taskId].tUsingRegisteredKeyItem != TRUE)
+    {
+        gBagMenu->newScreenCallback = CB2_OpenSealCaseFromBag;
+        Task_FadeAndCloseBagMenu(taskId);
+    }
+    else
+    {
+        gFieldCallback = FieldCB_ReturnToFieldNoScript;
+        FadeScreen(FADE_TO_BLACK, 0);
+        gTasks[taskId].func = Task_OpenRegisteredSealCase;
+    }
+}
+
+static void CB2_OpenSealCaseFromBag(void)
+{
+    OpenBallSealScreen(CB2_ReturnToBagMenuPocket);
+}
+
+static void Task_OpenRegisteredSealCase(u8 taskId)
+{
+    if (!gPaletteFade.active)
+    {
+        CleanupOverworldWindowsAndTilemaps();
+        OpenBallSealScreen(CB2_ReturnToField);
         DestroyTask(taskId);
     }
 }

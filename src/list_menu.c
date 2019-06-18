@@ -1,5 +1,6 @@
 #include "global.h"
 #include "menu.h"
+#include "international_string_util.h"
 #include "list_menu.h"
 #include "window.h"
 #include "text_window.h"
@@ -519,8 +520,6 @@ s32 ListMenuTestInput(struct ListMenuTemplate *template, u32 scrollOffset, u32 s
     list.template = *template;
     list.scrollOffset = scrollOffset;
     list.selectedRow = selectedRow;
-    list.unk_1C = 0;
-    list.unk_1D = 0;
 
     if (keys == DPAD_UP)
         ListMenuChangeSelection(&list, FALSE, 1, FALSE);
@@ -569,10 +568,7 @@ static u8 ListMenuInitInternal(struct ListMenuTemplate *listMenuTemplate, u16 sc
     list->template = *listMenuTemplate;
     list->scrollOffset = scrollOffset;
     list->selectedRow = selectedRow;
-    list->unk_1C = 0;
-    list->unk_1D = 0;
     list->taskId = TASK_NONE;
-    list->unk_1F = 0;
 
     gListMenuOverride.cursorPal = list->template.cursorPal;
     gListMenuOverride.fillValue = list->template.fillValue;
@@ -592,14 +588,30 @@ static u8 ListMenuInitInternal(struct ListMenuTemplate *listMenuTemplate, u16 sc
     return listTaskId;
 }
 
-static void ListMenuPrint(struct ListMenu *list, const u8 *str, u8 x, u8 y)
+static int GetListItemAlignmentOffset(const u8 *str, u8 itemAlign, int fontId, int width)
+{
+    switch (itemAlign)
+    {
+    case LIST_ITEM_ALIGN_CENTER:
+        return GetStringCenterAlignXOffset(fontId, str, width);
+    case LIST_ITEM_ALIGN_RIGHT:
+        return GetStringRightAlignXOffset(fontId, str, width);
+    case LIST_ITEM_ALIGN_LEFT:
+    default:
+        return 0;
+    }
+}
+
+static void ListMenuPrint(struct ListMenu *list, const u8 *str, u8 x, u8 y, bool32 isSelected, bool32 isCursor)
 {
     u8 colors[3];
+    u16 width = GetWindowAttribute(list->template.windowId, WINDOW_WIDTH) * 8;
     if (gListMenuOverride.enabled)
     {
         colors[0] = gListMenuOverride.fillValue;
-        colors[1] = gListMenuOverride.cursorPal;
+        colors[1] = isSelected ? 4 : gListMenuOverride.cursorPal;
         colors[2] = gListMenuOverride.cursorShadowPal;
+        x += isCursor ? 0 : GetListItemAlignmentOffset(str, list->template.itemAlign, gListMenuOverride.fontId, width);
         AddTextPrinterParameterized4(list->template.windowId,
                                      gListMenuOverride.fontId,
                                      x, y,
@@ -611,8 +623,9 @@ static void ListMenuPrint(struct ListMenu *list, const u8 *str, u8 x, u8 y)
     else
     {
         colors[0] = list->template.fillValue;
-        colors[1] = list->template.cursorPal;
+        colors[1] = isSelected ? 4 : list->template.cursorPal;
         colors[2] = list->template.cursorShadowPal;
+        x += isCursor ? 0 : GetListItemAlignmentOffset(str, list->template.itemAlign, list->template.fontId, width);
         AddTextPrinterParameterized4(list->template.windowId,
                                      list->template.fontId,
                                      x, y,
@@ -625,6 +638,7 @@ static void ListMenuPrintEntries(struct ListMenu *list, u16 startIndex, u16 yOff
 {
     s32 i;
     u8 x, y;
+    bool32 isSelected;
     u8 yMultiplier = GetFontAttribute(list->template.fontId, FONTATTR_MAX_LETTER_HEIGHT) + list->template.itemVerticalPadding;
 
     for (i = 0; i < count; i++)
@@ -638,7 +652,8 @@ static void ListMenuPrintEntries(struct ListMenu *list, u16 startIndex, u16 yOff
         if (list->template.itemPrintFunc != NULL)
             list->template.itemPrintFunc(list->template.windowId, list->template.items[startIndex].id, y);
 
-        ListMenuPrint(list, list->template.items[startIndex].name, x, y);
+        isSelected = list->template.highlightSelection && (startIndex == list->selectedRow + list->scrollOffset);
+        ListMenuPrint(list, list->template.items[startIndex].name, x, y, isSelected, FALSE);
         startIndex++;
     }
 }
@@ -651,7 +666,7 @@ static void ListMenuDrawCursor(struct ListMenu *list)
     switch (list->template.cursorKind)
     {
     case 0:
-        ListMenuPrint(list, gText_SelectorArrow2, x, y);
+        ListMenuPrint(list, gText_SelectorArrow2, x, y, FALSE, TRUE);
         break;
     case 1:
         break;
@@ -884,7 +899,6 @@ static void ListMenuCallSelectionChangedCallback(struct ListMenu *list, u8 onIni
         list->template.moveCursorFunc(list->template.items[list->scrollOffset + list->selectedRow].id, onInit, list);
 }
 
-// unused
 void ListMenuOverrideSetColors(u8 cursorPal, u8 fillValue, u8 cursorShadowPal)
 {
     gListMenuOverride.cursorPal = cursorPal;

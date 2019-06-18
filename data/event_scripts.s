@@ -4,6 +4,7 @@
 #include "constants/battle_arena.h"
 #include "constants/battle_dome.h"
 #include "constants/battle_factory.h"
+#include "constants/ball_seals.h"
 #include "constants/battle_frontier.h"
 #include "constants/battle_palace.h"
 #include "constants/battle_pike.h"

@@ -3787,9 +3787,6 @@ u32 GetBoxMonData(struct BoxPokemon *boxMon, s32 field, u8 *data)
     case MON_DATA_CHECKSUM:
         retVal = boxMon->checksum;
         break;
-    case MON_DATA_ENCRYPT_SEPARATOR:
-        retVal = boxMon->unknown;
-        break;
     case MON_DATA_SPECIES:
         retVal = boxMon->isBadEgg ? SPECIES_EGG : substruct0->species;
         break;
@@ -4029,6 +4026,18 @@ u32 GetBoxMonData(struct BoxPokemon *boxMon, s32 field, u8 *data)
                 | (substruct3->worldRibbon << 26);
         }
         break;
+    case MON_DATA_BALL_SEAL_1:
+        retVal = boxMon->ballSeal1;
+        break;
+    case MON_DATA_BALL_SEAL_2:
+        retVal = boxMon->ballSeal2;
+        break;
+    case MON_DATA_BALL_SEAL_3:
+        retVal = substruct0->ballSeal3;
+        break;
+    case MON_DATA_BALL_SEAL_4:
+        retVal = substruct0->ballSeal4;
+        break;
     default:
         break;
     }
@@ -4154,9 +4163,6 @@ void SetBoxMonData(struct BoxPokemon *boxMon, s32 field, const void *dataArg)
         break;
     case MON_DATA_CHECKSUM:
         SET16(boxMon->checksum);
-        break;
-    case MON_DATA_ENCRYPT_SEPARATOR:
-        SET16(boxMon->unknown);
         break;
     case MON_DATA_SPECIES:
     {
@@ -4335,6 +4341,18 @@ void SetBoxMonData(struct BoxPokemon *boxMon, s32 field, const void *dataArg)
         break;
     case MON_DATA_EVENT_LEGAL:
         SET8(substruct3->eventLegal);
+        break;
+    case MON_DATA_BALL_SEAL_1:
+        SET8(boxMon->ballSeal1);
+        break;
+    case MON_DATA_BALL_SEAL_2:
+        SET8(boxMon->ballSeal2);
+        break;
+    case MON_DATA_BALL_SEAL_3:
+        SET8(substruct0->ballSeal3);
+        break;
+    case MON_DATA_BALL_SEAL_4:
+        SET8(substruct0->ballSeal4);
         break;
     case MON_DATA_IVS:
     {

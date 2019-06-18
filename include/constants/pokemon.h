@@ -150,6 +150,7 @@
 #define MON_DATA_SMART_RIBBON      53
 #define MON_DATA_TOUGH_RIBBON      54
 #define MON_DATA_STATUS            55
+
 #define MON_DATA_LEVEL             56
 #define MON_DATA_HP                57
 #define MON_DATA_MAX_HP            58
@@ -183,6 +184,10 @@
 #define MON_DATA_SPEED2            86
 #define MON_DATA_SPATK2            87
 #define MON_DATA_SPDEF2            88
+#define MON_DATA_BALL_SEAL_1       89
+#define MON_DATA_BALL_SEAL_2       90
+#define MON_DATA_BALL_SEAL_3       91
+#define MON_DATA_BALL_SEAL_4       92
 
 // Ribbon IDs used by TV and Pokénav
 #define CHAMPION_RIBBON       0

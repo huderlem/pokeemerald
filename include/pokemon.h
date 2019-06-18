@@ -10,7 +10,8 @@ struct PokemonSubstruct0
     u32 experience;
     u8 ppBonuses;
     u8 friendship;
-    u16 filler;
+    u8 ballSeal3; // ballSeal1 and ballSeal2 are unencrypted
+    u8 ballSeal4;
 };
 
 struct PokemonSubstruct1
@@ -106,7 +107,8 @@ struct BoxPokemon
     u8 otName[PLAYER_NAME_LENGTH];
     u8 markings;
     u16 checksum;
-    u16 unknown;
+    u8 ballSeal1;
+    u8 ballSeal2; // TODO: move these next to the other two ballSeal fields when encryption is removed
 
     union
     {
