@@ -1,4 +1,5 @@
 #include "global.h"
+#include "ball_seal.h"
 #include "battle.h"
 #include "battle_anim.h"
 #include "battle_controllers.h"
@@ -674,12 +675,22 @@ void AnimTask_SwitchOutBallEffect(u8 taskId)
     u8 x, y;
     u8 priority, subpriority;
     u32 selectedPalettes;
+    u8 seal1, seal2, seal3, seal4;
+    u8 battlerSide;
+    struct Pokemon *mon;
 
     spriteId = gBattlerSpriteIds[gBattleAnimAttacker];
-    if (GetBattlerSide(gBattleAnimAttacker) == B_SIDE_PLAYER)
-        ball = GetMonData(&gPlayerParty[gBattlerPartyIndexes[gBattleAnimAttacker]], MON_DATA_POKEBALL);
+    battlerSide = GetBattlerSide(gBattleAnimAttacker);
+    if (battlerSide == B_SIDE_PLAYER)
+    {
+        mon = &gPlayerParty[gBattlerPartyIndexes[gBattleAnimAttacker]];
+        ball = GetMonData(mon, MON_DATA_POKEBALL);
+    }
     else
-        ball = GetMonData(&gEnemyParty[gBattlerPartyIndexes[gBattleAnimAttacker]], MON_DATA_POKEBALL);
+    {
+        mon = &gEnemyParty[gBattlerPartyIndexes[gBattleAnimAttacker]];
+        ball = GetMonData(mon, MON_DATA_POKEBALL);
+    }
 
     ballId = ItemIdToBallId(ball);
     switch (gTasks[taskId].data[0])
@@ -693,6 +704,14 @@ void AnimTask_SwitchOutBallEffect(u8 taskId)
         selectedPalettes = GetBattleBgPalettesMask(1, 0, 0, 0, 0, 0, 0);
         gTasks[taskId].data[11] = LaunchBallFadeMonTask(FALSE, gBattleAnimAttacker, selectedPalettes, ballId);
         gTasks[taskId].data[0]++;
+
+        // Animate ball seals.
+        seal1 = GetMonData(mon, MON_DATA_BALL_SEAL_1);
+        seal2 = GetMonData(mon, MON_DATA_BALL_SEAL_2);
+        seal3 = GetMonData(mon, MON_DATA_BALL_SEAL_3);
+        seal4 = GetMonData(mon, MON_DATA_BALL_SEAL_4);
+        LoadBallSealGraphics(seal1, seal2, seal3, seal4);
+        StartBallSealAnimation(seal1, seal2, seal3, seal4, x, y + 32, 1, 0x4, battlerSide);
         break;
     case 1:
         if (!gTasks[gTasks[taskId].data[10]].isActive && !gTasks[gTasks[taskId].data[11]].isActive)

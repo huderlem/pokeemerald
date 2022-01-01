@@ -1,4 +1,5 @@
 #include "global.h"
+#include "ball_seal.h"
 #include "battle.h"
 #include "battle_anim.h"
 #include "decompress.h"
@@ -751,8 +752,10 @@ static void SpriteCB_ReleaseMonFromBall(struct Sprite *sprite)
         s8 pan;
         u16 wantedCryCase;
         u8 taskId;
+        u8 seal1, seal2, seal3, seal4;
+        u8 battlerSide = GetBattlerSide(battlerId);
 
-        if (GetBattlerSide(battlerId) != B_SIDE_PLAYER)
+        if (battlerSide != B_SIDE_PLAYER)
         {
             mon = &gEnemyParty[gBattlerPartyIndexes[battlerId]];
             pan = 25;
@@ -796,6 +799,14 @@ static void SpriteCB_ReleaseMonFromBall(struct Sprite *sprite)
         gTasks[taskId].tCryTaskMonPtr1 = (u32)(mon) >> 16;
         gTasks[taskId].tCryTaskMonPtr2 = (u32)(mon);
         gTasks[taskId].tCryTaskState = 0;
+
+        // Animate ball seals in battle.
+        seal1 = GetMonData(mon, MON_DATA_BALL_SEAL_1);
+        seal2 = GetMonData(mon, MON_DATA_BALL_SEAL_2);
+        seal3 = GetMonData(mon, MON_DATA_BALL_SEAL_3);
+        seal4 = GetMonData(mon, MON_DATA_BALL_SEAL_4);
+        LoadBallSealGraphics(seal1, seal2, seal3, seal4);
+        StartBallSealAnimation(seal1, seal2, seal3, seal4, sprite->x, sprite->y - 5, 1, 0x4, battlerSide);
     }
 
     StartSpriteAffineAnim(&gSprites[gBattlerSpriteIds[sprite->sBattler]], BATTLER_AFFINE_EMERGE);
