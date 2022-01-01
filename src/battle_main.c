@@ -1945,6 +1945,14 @@ static void SpriteCB_UnusedBattleInit_Main(struct Sprite *sprite)
     }
 }
 
+static void SetMonBallSeals(struct Pokemon *mon, u8 ballSeal1, u8 ballSeal2, u8 ballSeal3, u8 ballSeal4)
+{
+    SetMonData(mon, MON_DATA_BALL_SEAL_1, &ballSeal1);
+    SetMonData(mon, MON_DATA_BALL_SEAL_2, &ballSeal2);
+    SetMonData(mon, MON_DATA_BALL_SEAL_3, &ballSeal3);
+    SetMonData(mon, MON_DATA_BALL_SEAL_4, &ballSeal4);
+}
+
 static u8 CreateNPCTrainerParty(struct Pokemon *party, u16 trainerNum, bool8 firstTrainer)
 {
     u32 nameHash = 0;
@@ -2000,6 +2008,7 @@ static u8 CreateNPCTrainerParty(struct Pokemon *party, u16 trainerNum, bool8 fir
                 personalityValue += nameHash << 8;
                 fixedIV = partyData[i].iv * MAX_PER_STAT_IVS / 255;
                 CreateMon(&party[i], partyData[i].species, partyData[i].lvl, fixedIV, TRUE, personalityValue, OT_ID_RANDOM_NO_SHINY, 0);
+                SetMonBallSeals(&party[i], partyData->ballSeals[0], partyData->ballSeals[1], partyData->ballSeals[2], partyData->ballSeals[3]);
                 break;
             }
             case F_TRAINER_PARTY_CUSTOM_MOVESET:
@@ -2012,6 +2021,7 @@ static u8 CreateNPCTrainerParty(struct Pokemon *party, u16 trainerNum, bool8 fir
                 personalityValue += nameHash << 8;
                 fixedIV = partyData[i].iv * MAX_PER_STAT_IVS / 255;
                 CreateMon(&party[i], partyData[i].species, partyData[i].lvl, fixedIV, TRUE, personalityValue, OT_ID_RANDOM_NO_SHINY, 0);
+                SetMonBallSeals(&party[i], partyData->ballSeals[0], partyData->ballSeals[1], partyData->ballSeals[2], partyData->ballSeals[3]);
 
                 for (j = 0; j < MAX_MON_MOVES; j++)
                 {
@@ -2030,7 +2040,7 @@ static u8 CreateNPCTrainerParty(struct Pokemon *party, u16 trainerNum, bool8 fir
                 personalityValue += nameHash << 8;
                 fixedIV = partyData[i].iv * MAX_PER_STAT_IVS / 255;
                 CreateMon(&party[i], partyData[i].species, partyData[i].lvl, fixedIV, TRUE, personalityValue, OT_ID_RANDOM_NO_SHINY, 0);
-
+                SetMonBallSeals(&party[i], partyData->ballSeals[0], partyData->ballSeals[1], partyData->ballSeals[2], partyData->ballSeals[3]);
                 SetMonData(&party[i], MON_DATA_HELD_ITEM, &partyData[i].heldItem);
                 break;
             }
@@ -2044,7 +2054,7 @@ static u8 CreateNPCTrainerParty(struct Pokemon *party, u16 trainerNum, bool8 fir
                 personalityValue += nameHash << 8;
                 fixedIV = partyData[i].iv * MAX_PER_STAT_IVS / 255;
                 CreateMon(&party[i], partyData[i].species, partyData[i].lvl, fixedIV, TRUE, personalityValue, OT_ID_RANDOM_NO_SHINY, 0);
-
+                SetMonBallSeals(&party[i], partyData->ballSeals[0], partyData->ballSeals[1], partyData->ballSeals[2], partyData->ballSeals[3]);
                 SetMonData(&party[i], MON_DATA_HELD_ITEM, &partyData[i].heldItem);
 
                 for (j = 0; j < MAX_MON_MOVES; j++)

@@ -2,6 +2,7 @@
 #define GUARD_DATA_H
 
 #include "constants/moves.h"
+#include "constants/ball_seals.h"
 
 #define SPECIES_SHINY_TAG 500
 
@@ -30,6 +31,7 @@ struct TrainerMonNoItemDefaultMoves
     u16 iv;
     u8 lvl;
     u16 species;
+    u8 ballSeals[4];
 };
 
 struct TrainerMonItemDefaultMoves
@@ -38,6 +40,7 @@ struct TrainerMonItemDefaultMoves
     u8 lvl;
     u16 species;
     u16 heldItem;
+    u8 ballSeals[4];
 };
 
 struct TrainerMonNoItemCustomMoves
@@ -46,6 +49,7 @@ struct TrainerMonNoItemCustomMoves
     u8 lvl;
     u16 species;
     u16 moves[MAX_MON_MOVES];
+    u8 ballSeals[4];
 };
 
 struct TrainerMonItemCustomMoves
@@ -55,6 +59,7 @@ struct TrainerMonItemCustomMoves
     u16 species;
     u16 heldItem;
     u16 moves[MAX_MON_MOVES];
+    u8 ballSeals[4];
 };
 
 union TrainerMonPtr
