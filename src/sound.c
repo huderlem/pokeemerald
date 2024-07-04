@@ -628,3 +628,22 @@ bool8 IsSpecialSEPlaying(void)
         return FALSE;
     return TRUE;
 }
+
+static void SetBGMTrackDisabled(int trackIndex, bool32 disabled)
+{
+    if (trackIndex >= gMPlayInfo_BGM.trackCount)
+        return;
+
+    gMPlayInfo_BGM.tracks[trackIndex].disabled = disabled;
+    gMPlayInfo_BGM.tracks[trackIndex].flags |= MPT_FLG_VOLCHG;
+}
+
+void EnableBGMTrack(int trackIndex)
+{
+    SetBGMTrackDisabled(trackIndex, FALSE);
+}
+
+void DisableBGMTrack(int trackIndex)
+{
+    SetBGMTrackDisabled(trackIndex, TRUE);
+}

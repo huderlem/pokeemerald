@@ -1713,13 +1713,20 @@ _081DD8B4:
 	ldr r4, [r4, o_SoundChannel_nextChannelPointer]
 	cmp r4, 0
 	bne _081DD892
-_081DD8BA:
+_081DD8BA::
 	ldrb r3, [r5, o_MusicPlayerTrack_flags]
 	movs r0, MPT_FLG_START
 	tst r0, r3
 	beq _081DD938
+	@ Clear64Byte wipes out the "disabled" member, so we have to manually preserve it.
+	adds r3, r5, 0
+	adds r3, o_MusicPlayerTrack_disabled
+	ldrb r1, [r3]
+	push {r1, r3}
 	adds r0, r5, 0
 	bl Clear64byte
+	pop {r1, r3}
+	strb r1, [r3]
 	movs r0, MPT_FLG_EXIST
 	strb r0, [r5, o_MusicPlayerTrack_flags]
 	movs r0, 0x2

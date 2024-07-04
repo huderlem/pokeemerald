@@ -301,7 +301,8 @@ struct MusicPlayerTrack
     u8 pseudoEchoLength;
     struct SoundChannel *chan;
     struct ToneData tone;
-    u8 gap[10];
+    u8 disabled;
+    u8 gap[9];
     u16 unk_3A;
     u32 unk_3C;
     u8 *cmdPtr;
@@ -413,7 +414,7 @@ void MPlayMain(struct MusicPlayerInfo *);
 void RealClearChain(void *x);
 
 void MPlayContinue(struct MusicPlayerInfo *mplayInfo);
-void MPlayStart(struct MusicPlayerInfo *mplayInfo, struct SongHeader *songHeader);
+void MPlayStart(struct MusicPlayerInfo *mplayInfo, struct SongHeader *songHeader, u16 songId);
 void m4aMPlayStop(struct MusicPlayerInfo *mplayInfo);
 void FadeOutBody(struct MusicPlayerInfo *mplayInfo);
 void TrkVolPitSet(struct MusicPlayerInfo *mplayInfo, struct MusicPlayerTrack *track);

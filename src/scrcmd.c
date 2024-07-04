@@ -2305,3 +2305,17 @@ bool8 ScrCmd_warpwhitefade(struct ScriptContext *ctx)
     ResetInitialPlayerAvatarState();
     return TRUE;
 }
+
+bool8 ScrCmd_enablebgmtrack(struct ScriptContext *ctx)
+{
+    u8 trackIndex = VarGet(ScriptReadByte(ctx));
+    EnableBGMTrack(trackIndex);
+    return FALSE;
+}
+
+bool8 ScrCmd_disablebgmtrack(struct ScriptContext *ctx)
+{
+    u8 trackIndex = VarGet(ScriptReadByte(ctx));
+    DisableBGMTrack(trackIndex);
+    return FALSE;
+}

@@ -45,5 +45,7 @@ void SE12PanpotControl(s8 pan);
 bool8 IsSEPlaying(void);
 bool8 IsBGMPlaying(void);
 bool8 IsSpecialSEPlaying(void);
+void EnableBGMTrack(int trackIndex);
+void DisableBGMTrack(int trackIndex);
 
 #endif // GUARD_SOUND_H

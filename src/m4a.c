@@ -1,5 +1,6 @@
 #include <string.h>
 #include "gba/m4a_internal.h"
+#include "m4a_dynamic.h"
 
 extern const u8 gCgb3Vol[];
 
@@ -112,7 +113,7 @@ void m4aSongNumStart(u16 n)
     const struct Song *song = &songTable[n];
     const struct MusicPlayer *mplay = &mplayTable[song->ms];
 
-    MPlayStart(mplay->info, song->header);
+    MPlayStart(mplay->info, song->header, n);
 }
 
 void m4aSongNumStartOrChange(u16 n)
@@ -124,14 +125,14 @@ void m4aSongNumStartOrChange(u16 n)
 
     if (mplay->info->songHeader != song->header)
     {
-        MPlayStart(mplay->info, song->header);
+        MPlayStart(mplay->info, song->header, n);
     }
     else
     {
         if ((mplay->info->status & MUSICPLAYER_STATUS_TRACK) == 0
          || (mplay->info->status & MUSICPLAYER_STATUS_PAUSE))
         {
-            MPlayStart(mplay->info, song->header);
+            MPlayStart(mplay->info, song->header, n);
         }
     }
 }
@@ -144,9 +145,9 @@ void m4aSongNumStartOrContinue(u16 n)
     const struct MusicPlayer *mplay = &mplayTable[song->ms];
 
     if (mplay->info->songHeader != song->header)
-        MPlayStart(mplay->info, song->header);
+        MPlayStart(mplay->info, song->header, n);
     else if ((mplay->info->status & MUSICPLAYER_STATUS_TRACK) == 0)
-        MPlayStart(mplay->info, song->header);
+        MPlayStart(mplay->info, song->header, n);
     else if (mplay->info->status & MUSICPLAYER_STATUS_PAUSE)
         MPlayContinue(mplay->info);
 }
@@ -589,7 +590,7 @@ void MPlayOpen(struct MusicPlayerInfo *mplayInfo, struct MusicPlayerTrack *track
     mplayInfo->ident = ID_NUMBER;
 }
 
-void MPlayStart(struct MusicPlayerInfo *mplayInfo, struct SongHeader *songHeader)
+void MPlayStart(struct MusicPlayerInfo *mplayInfo, struct SongHeader *songHeader, u16 songId)
 {
     s32 i;
     u8 unk_B;
@@ -626,6 +627,7 @@ void MPlayStart(struct MusicPlayerInfo *mplayInfo, struct SongHeader *songHeader
             TrackStop(mplayInfo, track);
             track->flags = MPT_FLG_EXIST | MPT_FLG_START;
             track->chan = 0;
+            track->disabled = FALSE;
             track->cmdPtr = songHeader->part[i];
             i++;
             track++;
@@ -635,9 +637,12 @@ void MPlayStart(struct MusicPlayerInfo *mplayInfo, struct SongHeader *songHeader
         {
             TrackStop(mplayInfo, track);
             track->flags = 0;
+            track->disabled = FALSE;
             i++;
             track++;
         }
+
+        m4aInitDynamicTracks(songHeader->trackCount, mplayInfo->tracks, songId);
 
         if (songHeader->reverb & SOUND_MODE_REVERB_SET)
             m4aSoundMode(songHeader->reverb);
@@ -750,7 +755,10 @@ void TrkVolPitSet(struct MusicPlayerInfo *mplayInfo, struct MusicPlayerTrack *tr
         s32 x;
         s32 y;
 
-        x = (u32)(track->vol * track->volX) >> 5;
+        if (track->disabled)
+            x = 0;
+        else
+            x = (u32)(track->vol * track->volX) >> 5;
 
         if (track->modT == 1)
             x = (u32)(x * (track->modM + 128)) >> 7;
@@ -1674,7 +1682,7 @@ start_song:
 
     mplayInfo->ident = ID_NUMBER;
 
-    MPlayStart(mplayInfo, (struct SongHeader *)(&gPokemonCrySongs[i]));
+    MPlayStart(mplayInfo, (struct SongHeader *)(&gPokemonCrySongs[i]), -1);
 
     return mplayInfo;
 }

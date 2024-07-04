@@ -1729,6 +1729,18 @@
 	.2byte \quantity
 	.endm
 
+	@ Enables the specified m4a BGM track.
+	.macro enablebgmtrack trackIndex:req
+	.byte 0xe3
+	.byte \trackIndex
+	.endm
+
+	@ Disables the specified m4a BGM track.
+	.macro disablebgmtrack trackIndex:req
+	.byte 0xe4
+	.byte \trackIndex
+	.endm
+
 
 @ Supplementary
 
