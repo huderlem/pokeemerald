@@ -1,6 +1,7 @@
 #include "global.h"
 #include "battle_pyramid.h"
 #include "bg.h"
+#include "comfy_anim.h"
 #include "event_data.h"
 #include "gpu_regs.h"
 #include "international_string_util.h"
@@ -224,6 +225,7 @@ enum {
 #define tYOffset       data[2]
 #define tIncomingPopUp data[3]
 #define tPrintTimer    data[4]
+#define tComfyAnimId   data[5]
 
 void ShowMapNamePopup(void)
 {
@@ -258,6 +260,13 @@ static void Task_MapNamePopUpWindow(u8 taskId)
         // Wait, then create and print the pop up window
         if (++task->tPrintTimer > 30)
         {
+            struct ComfyAnimEasingConfig animConfig = {
+                .durationFrames = 30,
+                .easingFunc = ComfyAnimEasing_EaseInOutBack,
+                .from = Q_24_8(task->tYOffset),
+                .to = Q_24_8(0),
+            };
+            task->tComfyAnimId = CreateComfyAnim_Easing(&animConfig);
             task->tState = STATE_SLIDE_IN;
             task->tPrintTimer = 0;
             ShowMapNamePopUpWindow();
@@ -265,9 +274,10 @@ static void Task_MapNamePopUpWindow(u8 taskId)
         break;
     case STATE_SLIDE_IN:
         // Slide the window onscreen.
-        task->tYOffset -= POPUP_SLIDE_SPEED;
-        if (task->tYOffset <= 0 )
+        task->tYOffset = Q_24_8_TO_INT(gComfyAnims[task->tComfyAnimId].position);
+        if (gComfyAnims[task->tComfyAnimId].completed)
         {
+            ReleaseComfyAnim(task->tComfyAnimId);
             task->tYOffset = 0;
             task->tState = STATE_WAIT;
             gTasks[sPopupTaskId].data[1] = 0;
@@ -277,15 +287,23 @@ static void Task_MapNamePopUpWindow(u8 taskId)
         // Wait while the window is fully onscreen.
         if (++task->tOnscreenTimer > 120)
         {
+            struct ComfyAnimEasingConfig animConfig = {
+                .durationFrames = 30,
+                .easingFunc = ComfyAnimEasing_EaseInOutBack,
+                .from = Q_24_8(task->tYOffset),
+                .to = Q_24_8(POPUP_OFFSCREEN_Y),
+            };
+            task->tComfyAnimId = CreateComfyAnim_Easing(&animConfig);
             task->tOnscreenTimer = 0;
             task->tState = STATE_SLIDE_OUT;
         }
         break;
     case STATE_SLIDE_OUT:
         // Slide the window offscreen.
-        task->tYOffset += POPUP_SLIDE_SPEED;
-        if (task->tYOffset >= POPUP_OFFSCREEN_Y)
+        task->tYOffset = Q_24_8_TO_INT(gComfyAnims[task->tComfyAnimId].position);
+        if (gComfyAnims[task->tComfyAnimId].completed)
         {
+            ReleaseComfyAnim(task->tComfyAnimId);
             task->tYOffset = POPUP_OFFSCREEN_Y;
             if (task->tIncomingPopUp)
             {

@@ -6,6 +6,7 @@
 #include "bg.h"
 #include "cable_club.h"
 #include "clock.h"
+#include "comfy_anim.h"
 #include "event_data.h"
 #include "event_object_movement.h"
 #include "event_scripts.h"
@@ -1466,6 +1467,7 @@ static void OverworldBasic(void)
 {
     ScriptContext_RunScript();
     RunTasks();
+    AdvanceComfyAnimations();
     AnimateSprites();
     CameraUpdate();
     UpdateCameraPanning();
@@ -2131,6 +2133,7 @@ static void InitOverworldGraphicsRegisters(void)
 static void ResumeMap(bool32 a1)
 {
     ResetTasks();
+    ReleaseComfyAnims();
     ResetSpriteData();
     ResetPaletteFade();
     ScanlineEffect_Clear();
