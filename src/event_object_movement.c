@@ -2,6 +2,7 @@
 #include "malloc.h"
 #include "battle_pyramid.h"
 #include "berry.h"
+#include "comfy_anim.h"
 #include "decoration.h"
 #include "event_data.h"
 #include "event_object_movement.h"
@@ -4147,19 +4148,61 @@ movement_type_def(MovementType_CopyPlayer, gMovementTypeFuncs_CopyPlayer)
 
 bool8 MovementType_CopyPlayer_Step0(struct ObjectEvent *objectEvent, struct Sprite *sprite)
 {
-    ClearObjectEventMovement(objectEvent, sprite);
-    if (objectEvent->directionSequenceIndex == 0)
-        objectEvent->directionSequenceIndex = GetPlayerFacingDirection();
+    struct ComfyAnimSpringConfig animConfig = {
+        .mass = Q_24_8(50),
+        COMFY_ANIM_SPRING_STIFF,
+    };
+
+    if (objectEvent->graphicsId == OBJ_EVENT_GFX_BIG_SNORLAX_DOLL)
+    {
+        animConfig.mass = Q_24_8(400);
+        animConfig.friction = Q_24_8(4000);
+    }
+    else if (objectEvent->graphicsId == OBJ_EVENT_GFX_PIKACHU_DOLL)
+    {
+        animConfig.friction = Q_24_8(500);
+        animConfig.tension = Q_24_8(200);
+    }
+
+    switch (GetPlayerFacingDirection())
+    {
+    case DIR_NORTH:
+        animConfig.from = Q_24_8(sprite->y2);
+        animConfig.to = Q_24_8(-24);
+        break;
+    case DIR_SOUTH:
+        animConfig.from = Q_24_8(sprite->y2);
+        animConfig.to = Q_24_8(24);
+        break;
+    }
+
+    sprite->data[6] = CreateComfyAnim_Spring(&animConfig);
     sprite->sTypeFuncId = 1;
     return TRUE;
 }
 
 bool8 MovementType_CopyPlayer_Step1(struct ObjectEvent *objectEvent, struct Sprite *sprite)
 {
-    if (gObjectEvents[gPlayerAvatar.objectEventId].movementActionId == MOVEMENT_ACTION_NONE || gPlayerAvatar.tileTransitionState == T_TILE_CENTER)
-        return FALSE;
+    struct ComfyAnim *anim = &gComfyAnims[sprite->data[6]];
+    switch (GetPlayerFacingDirection())
+    {
+    case DIR_NORTH:
+        anim->config.data.spring.to = Q_24_8(-24);
+        break;
+    case DIR_SOUTH:
+        anim->config.data.spring.to = Q_24_8(24);
+        break;
+    }
 
-    return gCopyPlayerMovementFuncs[PlayerGetCopyableMovement()](objectEvent, sprite, GetPlayerMovementDirection(), NULL);
+    if (anim->completed)
+    {
+        ReleaseComfyAnim(sprite->data[6]);
+        sprite->sTypeFuncId = 0;
+        return FALSE;
+    }
+
+    sprite->y2 = ReadComfyAnimValueSmooth(anim);
+    return FALSE;
 }
 
 bool8 MovementType_CopyPlayer_Step2(struct ObjectEvent *objectEvent, struct Sprite *sprite)
