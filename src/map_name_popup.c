@@ -260,13 +260,20 @@ static void Task_MapNamePopUpWindow(u8 taskId)
         // Wait, then create and print the pop up window
         if (++task->tPrintTimer > 30)
         {
-            struct ComfyAnimEasingConfig animConfig = {
-                .durationFrames = 30,
-                .easingFunc = ComfyAnimEasing_EaseInOutBack,
+            struct ComfyAnimSpringConfig animConfig = {
                 .from = Q_24_8(task->tYOffset),
                 .to = Q_24_8(0),
+                .mass = Q_24_8(50),
+                COMFY_ANIM_SPRING_STIFF,
             };
-            task->tComfyAnimId = CreateComfyAnim_Easing(&animConfig);
+            task->tComfyAnimId = CreateComfyAnim_Spring(&animConfig);
+            // struct ComfyAnimEasingConfig animConfig = {
+            //     .durationFrames = 30,
+            //     .easingFunc = ComfyAnimEasing_EaseInOutBack,
+            //     .from = Q_24_8(task->tYOffset),
+            //     .to = Q_24_8(0),
+            // };
+            // task->tComfyAnimId = CreateComfyAnim_Easing(&animConfig);
             task->tState = STATE_SLIDE_IN;
             task->tPrintTimer = 0;
             ShowMapNamePopUpWindow();
@@ -274,7 +281,7 @@ static void Task_MapNamePopUpWindow(u8 taskId)
         break;
     case STATE_SLIDE_IN:
         // Slide the window onscreen.
-        task->tYOffset = Q_24_8_TO_INT(gComfyAnims[task->tComfyAnimId].position);
+        task->tYOffset = ReadComfyAnimValueSmooth(&gComfyAnims[task->tComfyAnimId]);
         if (gComfyAnims[task->tComfyAnimId].completed)
         {
             ReleaseComfyAnim(task->tComfyAnimId);
@@ -300,7 +307,7 @@ static void Task_MapNamePopUpWindow(u8 taskId)
         break;
     case STATE_SLIDE_OUT:
         // Slide the window offscreen.
-        task->tYOffset = Q_24_8_TO_INT(gComfyAnims[task->tComfyAnimId].position);
+        task->tYOffset = ReadComfyAnimValueSmooth(&gComfyAnims[task->tComfyAnimId]);
         if (gComfyAnims[task->tComfyAnimId].completed)
         {
             ReleaseComfyAnim(task->tComfyAnimId);
