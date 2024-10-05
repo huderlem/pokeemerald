@@ -48,7 +48,8 @@ static void AdvanceComfyAnim_Easing(struct ComfyAnim *anim)
 // https://github.com/pmndrs/react-spring/blob/fd65b605b85c3a24143c4ce9dd322fdfca9c66be/packages/core/src/SpringValue.ts#L278
 static void AdvanceComfyAnim_Spring(struct ComfyAnim *anim)
 {
-    s32 springForce, dampingForce, acceleration;
+    s32 springForce, dampingForce, acceleration, prevPosition;
+    s32 prevPositionSign, curPositionSign;
     struct ComfyAnimSpringConfig *config = &anim->config.data.spring;
 
     // When the spring value isn't moving AND it's at the target position, the animation is considered completed.
@@ -64,18 +65,36 @@ static void AdvanceComfyAnim_Spring(struct ComfyAnim *anim)
     dampingForce = -1 * MathUtil_Mul32(MathUtil_Mul32(config->friction, 0x5 /* Q_24_8(0.02) */), anim->velocity);
     acceleration = MathUtil_Div32(springForce + dampingForce, config->mass);
     anim->velocity += acceleration;
+    prevPosition = anim->position;
     anim->position += anim->velocity;
+
+    if (config->clampAfter > 0)
+    {
+        prevPositionSign = prevPosition - config->to > 0;
+        curPositionSign = anim->position - config->to > 0;
+        if (prevPositionSign != curPositionSign)
+        {
+            // The spring value has overshot the target value. Check if the animation should complete early, as indicated by
+            // the "clampAfter" config.
+            if (anim->state.springState.overshootCount >= config->clampAfter)
+            {
+                anim->position = config->to;
+                anim->completed = TRUE;
+                return;
+            }
+
+            anim->state.springState.overshootCount++;
+        }
+    }
 }
 
 static void TryAdvanceComfyAnim(struct ComfyAnim *anim)
 {
-    if (anim->completed)
-        return;
-
     switch (anim->config.type)
     {
     case COMFY_ANIM_TYPE_EASING:
-        AdvanceComfyAnim_Easing(anim);
+        if (!anim->completed)
+            AdvanceComfyAnim_Easing(anim);
         break;
     case COMFY_ANIM_TYPE_SPRING:
         AdvanceComfyAnim_Spring(anim);
@@ -142,6 +161,7 @@ u32 CreateComfyAnim_Spring(struct ComfyAnimSpringConfig *config)
     anim->position = config->from;
     anim->config.type = COMFY_ANIM_TYPE_SPRING;
     anim->config.data.spring = *config;
+    anim->state.springState.overshootCount = 0;
     return i;
 }
 

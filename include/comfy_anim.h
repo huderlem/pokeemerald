@@ -33,6 +33,12 @@ struct ComfyAnimSpringConfig {
     s32 friction;
     // The mass of the value animated by the spring.
     s32 mass;
+    // The maximum number of times the value can overshoot the destination before the spring animation
+    // completes.
+    //    A value of 0 (the default) indicates no clamping--the spring will run to its natural conclusion.
+    //    A value of 1 indicates the spring is allowed to overshoot the target value once.
+    //    A value of 2 indicates the spring is allowed to overshoot the target value twice, and so on.
+    u32 clampAfter;
 };
 
 struct ComfyAnimConfig {
@@ -47,10 +53,15 @@ struct ComfyAnimEasingState {
     u32 curFrame;
 };
 
+struct ComfyAnimSpringState {
+    u32 overshootCount;
+};
+
 struct ComfyAnim {
     struct ComfyAnimConfig config;
     union {
         struct ComfyAnimEasingState easingState;
+        struct ComfyAnimSpringState springState;
     } state;
     // The current position of the animation. Q_24_8 fixed-point value
     s32 position;

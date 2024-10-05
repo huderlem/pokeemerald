@@ -309,6 +309,8 @@ extern const u8 gText_ButtonTypeLR[];
 extern const u8 gText_ButtonTypeLEqualsA[];
 extern const u8 gText_Option[];
 extern const u8 gText_OptionMenu[];
+extern const u8 gText_ComfyAnimsMenu[];
+extern const u8 gText_ComfyAnims[];
 extern const u8 gText_TextSpeed[];
 extern const u8 gText_BattleScene[];
 extern const u8 gText_BattleStyle[];
