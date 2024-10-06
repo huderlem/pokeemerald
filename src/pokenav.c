@@ -1,5 +1,6 @@
 #include "global.h"
 #include "malloc.h"
+#include "comfy_anim.h"
 #include "task.h"
 #include "main.h"
 #include "overworld.h"
@@ -323,6 +324,7 @@ void CB2_InitPokeNav(void)
     {
         InitPokenavResources(gPokenavResources);
         ResetTasks();
+        ReleaseComfyAnims();
         SetVBlankCallback(NULL);
         CreateTask(Task_Pokenav, 0);
         SetMainCallback2(CB2_Pokenav);
@@ -417,6 +419,7 @@ static bool32 AnyMonHasRibbon(void)
 static void CB2_Pokenav(void)
 {
     RunTasks();
+    AdvanceComfyAnimations();
     AnimateSprites();
     BuildOamBuffer();
     UpdatePaletteFade();

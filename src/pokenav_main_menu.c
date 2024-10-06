@@ -1,5 +1,6 @@
 #include "global.h"
 #include "pokenav.h"
+#include "comfy_anim.h"
 #include "constants/songs.h"
 #include "sound.h"
 #include "constants/rgb.h"
@@ -821,29 +822,37 @@ static void HideLeftHeaderSubmenuSprites(bool32 isOnRightSide)
 
 static void MoveLeftHeader(struct Sprite *sprite, s32 startX, s32 endX, s32 duration)
 {
+    struct ComfyAnimSpringConfig xTranslateConfig = {
+        .mass = Q_24_8(50),
+        .tension = Q_24_8(135),
+        .friction = Q_24_8(700),
+        .clampAfter = 1,
+        .from = Q_24_8(startX),
+        .to = Q_24_8(endX),
+        .delayFrames = 0,
+    };
     sprite->x = startX;
     sprite->data[0] = startX * 16;
     sprite->data[1] = (endX - startX) * 16 / duration;
     sprite->data[2] = duration;
+    sprite->data[3] = CreateComfyAnim_Spring(&xTranslateConfig);
     sprite->data[7] = endX;
     sprite->callback = SpriteCB_MoveLeftHeader;
 }
 
 static void SpriteCB_MoveLeftHeader(struct Sprite *sprite)
 {
-    if (sprite->data[2] != 0)
+    sprite->x = ReadComfyAnimValueSmooth(&gComfyAnims[sprite->data[3]]);
+    if (gComfyAnims[sprite->data[3]].completed)
     {
-        sprite->data[2]--;
-        sprite->data[0] += sprite->data[1];
-        sprite->x = sprite->data[0] >> 4;
+        ReleaseComfyAnim(sprite->data[3]);
+        sprite->callback = SpriteCallbackDummy;
+    }
+    else
+    {
         if (sprite->x < -16 || sprite->x > 256)
             sprite->invisible = TRUE;
         else
             sprite->invisible = FALSE;
-    }
-    else
-    {
-        sprite->x = sprite->data[7];
-        sprite->callback = SpriteCallbackDummy;
     }
 }

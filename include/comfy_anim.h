@@ -20,6 +20,8 @@ struct ComfyAnimEasingConfig {
     // The target position of the animation. Q_24_8 fixed-point value
     s32 to;
     ComfyAnimEasingFunc easingFunc;
+    // The number of frames to delay before starting the animation.
+    u32 delayFrames;
 };
 
 struct ComfyAnimSpringConfig {
@@ -39,6 +41,8 @@ struct ComfyAnimSpringConfig {
     //    A value of 1 indicates the spring is allowed to overshoot the target value once.
     //    A value of 2 indicates the spring is allowed to overshoot the target value twice, and so on.
     u32 clampAfter;
+    // The number of frames to delay before starting the animation.
+    u32 delayFrames;
 };
 
 struct ComfyAnimConfig {
@@ -67,6 +71,8 @@ struct ComfyAnim {
     s32 position;
     // The current velocity of the animation. Q_24_8 fixed-point value
     s32 velocity;
+    // The number of frames to delay before processing the animation.
+    u32 delayFrames;
     // Indicates whether or not the animation has completed.
     bool32 completed;
     // Indicates whether or not the animation is currently in use.
@@ -74,7 +80,7 @@ struct ComfyAnim {
     bool32 inUse;
 };
 
-#define NUM_COMFY_ANIMS     8
+#define NUM_COMFY_ANIMS     24
 #define INVALID_COMFY_ANIM  NUM_COMFY_ANIMS
 extern struct ComfyAnim gComfyAnims[NUM_COMFY_ANIMS];
 

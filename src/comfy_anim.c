@@ -60,6 +60,13 @@ static void AdvanceComfyAnim_Spring(struct ComfyAnim *anim)
         return;
     }
 
+    // Wait for the specified delay before advancing the animation.
+    if (anim->delayFrames > 0)
+    {
+        anim->delayFrames--;
+        return;
+    }
+
     // Apply spring physics to update velocity and position of the spring value.
     springForce = -1 * MathUtil_Mul32(MathUtil_Mul32(config->tension, 0x5 /* Q_24_8(0.02) */), anim->position - config->to);
     dampingForce = -1 * MathUtil_Mul32(MathUtil_Mul32(config->friction, 0x5 /* Q_24_8(0.02) */), anim->velocity);
@@ -139,6 +146,7 @@ u32 CreateComfyAnim_Easing(struct ComfyAnimEasingConfig *config)
     anim->inUse = TRUE;
     anim->completed = FALSE;
     anim->velocity = 0;
+    anim->delayFrames = config->delayFrames;
     anim->position = config->from;
     anim->config.type = COMFY_ANIM_TYPE_EASING;
     anim->config.data.easing = *config;
@@ -158,6 +166,7 @@ u32 CreateComfyAnim_Spring(struct ComfyAnimSpringConfig *config)
     anim->inUse = TRUE;
     anim->completed = FALSE;
     anim->velocity = 0;
+    anim->delayFrames = config->delayFrames;
     anim->position = config->from;
     anim->config.type = COMFY_ANIM_TYPE_SPRING;
     anim->config.data.spring = *config;

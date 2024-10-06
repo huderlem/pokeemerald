@@ -2,6 +2,7 @@
 #include "malloc.h"
 #include "decompress.h"
 #include "bg.h"
+#include "comfy_anim.h"
 #include "palette.h"
 #include "trig.h"
 #include "gpu_regs.h"
@@ -203,6 +204,8 @@ struct
         .gfx = {
             sOptionsLabelGfx_RegionMap,
             sOptionsLabelGfx_Condition,
+            sOptionsLabelGfx_MatchCall,
+            sOptionsLabelGfx_Ribbons,
             sOptionsLabelGfx_SwitchOff
         }
     },
@@ -906,7 +909,7 @@ static void StartOptionAnimations_Enter(void)
             }
 
             // Slide new options in
-            StartOptionSlide(gfx->iconSprites[i], OPTION_EXIT_X, x, 12);
+            StartOptionSlide(gfx->iconSprites[i], OPTION_EXIT_X, x, i * 3);
             SetOptionInvisibility(gfx->iconSprites[i], FALSE);
         }
         else
@@ -939,8 +942,8 @@ static void StartOptionAnimations_CursorMoved(void)
 
     // The selected option slides out a bit and the previously
     // selected option slides back to its original position.
-    StartOptionSlide(gfx->iconSprites[gfx->cursorPos], OPTION_SELECTED_X, OPTION_DEFAULT_X, 4);
-    StartOptionSlide(gfx->iconSprites[newPos], OPTION_DEFAULT_X, OPTION_SELECTED_X, 4);
+    StartOptionSlide(gfx->iconSprites[gfx->cursorPos], OPTION_SELECTED_X, OPTION_DEFAULT_X, 0);
+    StartOptionSlide(gfx->iconSprites[newPos], OPTION_DEFAULT_X, OPTION_SELECTED_X, 0);
     gfx->cursorPos = newPos;
 }
 
@@ -956,7 +959,7 @@ static void StartOptionAnimations_Exit(void)
             // Unselected options slide out,
             // selected option zooms in
             if (gfx->cursorPos != i)
-                StartOptionSlide(gfx->iconSprites[i], OPTION_DEFAULT_X, OPTION_EXIT_X, 8);
+                StartOptionSlide(gfx->iconSprites[i], OPTION_DEFAULT_X, OPTION_EXIT_X, i * 3);
             else
                 StartOptionZoom(gfx->iconSprites[i]);
         }
@@ -980,21 +983,26 @@ static bool32 AreMenuOptionSpritesMoving(void)
     return FALSE;
 }
 
-#define sSlideTime  data[0]
-#define sSlideAccel data[1]
-#define sSlideSpeed data[2]
-#define sSlideEndX  data[7]
+#define sSlideAnimId data[0]
+#define sSlideEndX   data[7]
 
-static void StartOptionSlide(struct Sprite ** sprites, s32 startX, s32 endX, s32 time)
+static void StartOptionSlide(struct Sprite ** sprites, s32 startX, s32 endX, s32 delay)
 {
     s32 i;
+    struct ComfyAnimSpringConfig xTranslateConfig = {
+        .mass = Q_24_8(50),
+        .tension = Q_24_8(135),
+        .friction = Q_24_8(700),
+        .clampAfter = 1,
+    };
 
     for (i = 0; i < NUM_OPTION_SUBSPRITES; i++)
     {
+        xTranslateConfig.from = Q_24_8(startX);
+        xTranslateConfig.to = Q_24_8(endX);
+        xTranslateConfig.delayFrames = delay;
         (*sprites)->x = startX;
-        (*sprites)->sSlideTime = time;
-        (*sprites)->sSlideAccel = 16 * (endX - startX) / time;
-        (*sprites)->sSlideSpeed = 16 * startX;
+        (*sprites)->sSlideAnimId = CreateComfyAnim_Spring(&xTranslateConfig);
         (*sprites)->sSlideEndX = endX;
         (*sprites)->callback = SpriteCB_OptionSlide;
         sprites++;
@@ -1052,22 +1060,15 @@ static void SetOptionInvisibility(struct Sprite ** sprites, bool32 invisible)
 
 static void SpriteCB_OptionSlide(struct Sprite * sprite)
 {
-    sprite->sSlideTime--;
-    if (sprite->sSlideTime != -1)
+    sprite->x = ReadComfyAnimValueSmooth(&gComfyAnims[sprite->sSlideAnimId]);
+    if (gComfyAnims[sprite->sSlideAnimId].completed)
     {
-        sprite->sSlideSpeed += sprite->sSlideAccel;
-        sprite->x = sprite->sSlideSpeed >> 4;
-    }
-    else
-    {
-        sprite->x = sprite->sSlideEndX;
+        ReleaseComfyAnim(sprite->sSlideAnimId);
         sprite->callback = SpriteCallbackDummy;
     }
 }
 
-#undef sSlideTime
-#undef sSlideAccel
-#undef sSlideSpeed
+#undef sSlideAnimId
 #undef sSlideEndX
 
 static void SpriteCB_OptionZoom(struct Sprite * sprite)
