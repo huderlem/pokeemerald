@@ -92,6 +92,7 @@ extern struct ComfyAnim gComfyAnims[NUM_COMFY_ANIMS];
 #define COMFY_ANIM_SPRING_SLOW     .tension = Q_24_8(285), .friction = Q_24_8(2000)
 #define COMFY_ANIM_SPRING_MOLASSES .tension = Q_24_8(285), .friction = Q_24_8(4000)
 
+void TryAdvanceComfyAnim(struct ComfyAnim *anim);
 void AdvanceComfyAnimations(void);
 u32 CreateComfyAnim_Easing(struct ComfyAnimEasingConfig *config);
 u32 CreateComfyAnim_Spring(struct ComfyAnimSpringConfig *config);

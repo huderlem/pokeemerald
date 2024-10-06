@@ -95,7 +95,7 @@ static void AdvanceComfyAnim_Spring(struct ComfyAnim *anim)
     }
 }
 
-static void TryAdvanceComfyAnim(struct ComfyAnim *anim)
+void TryAdvanceComfyAnim(struct ComfyAnim *anim)
 {
     switch (anim->config.type)
     {
