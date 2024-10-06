@@ -98,6 +98,7 @@ u8 Menu_MoveCursorNoWrapAround(s8 cursorDelta);
 void DrawStdWindowFrame(u8 windowId, bool8 CopyToVram);
 u8 AddStartMenuWindow(u8 numActions);
 u8 InitMenuNormal(u8 windowId, u8 fontId, u8 left, u8 top, u8 cursorHeight, u8 numChoices, u8 initialCursorPos);
+u8 InitMenuWithSpriteCursor(u8 windowId, u8 fontId, u8 left, u8 top, u8 cursorHeight, u8 numChoices, u8 initialCursorPos);
 void LoadMessageBoxAndFrameGfx(u8 windowId, bool8 copyToVram);
 void AddTextPrinterForMessage_2(bool8 allowSkippingDelayWithButtonPress);
 void RemoveStartMenuWindow(void);
