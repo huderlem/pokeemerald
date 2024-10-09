@@ -194,7 +194,7 @@ void StartAnimation(void)
     gSprites[spriteId].callback = UpdateSprite;
 
     // Start animation and save the animId in sprite's data[0].
-    gSprites[spriteId].data[0] = CreateComfyAnim_Easing(&config)
+    gSprites[spriteId].data[0] = CreateComfyAnim_Easing(&config);
 }
 
 void UpdateSprite(struct Sprite *sprite)
