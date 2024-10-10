@@ -86,7 +86,7 @@ A spring ComfyAnim is configured with `struct ComfyAnimSpringConfig`.  Its membe
 - `u32 clampAfter` - The number of times the ComfyAnim value can reach the `to` value before ending the animation.
     - If `clampAfter` is `0`, that means that the spring value will wobble around the `to` value until it eventually comes to a complete stop due to friction.  `clampAfter=1` would mean the spring animation ends the very first time it reached the target value.  `clampAfter=2` means the spring overshoots once, and so on.
 - `u32 delayFrames` - The number of frames to delay the start of the animation.
-    - For example, `60` would result in the spring value being stuck at its original `from` position for 60 frames, after which the spring animation would continue normally.
+    - For example, `60` would result in the value being stuck at its original `from` position for 60 frames, after which the spring animation would continue normally.
 
 To create a spring config, call `InitComfyAnimConfig_Spring()`.
 ```c
@@ -116,7 +116,7 @@ An easing ComfyAnim is configured with `struct ComfyAnimEasingConfig`.  Its memb
     - `ComfyAnimEasing_EaseInOutBack`
     - `ComfyAnimEasing_Linear`
 - `u32 delayFrames` - The number of frames to delay the start of the animation.
-    - For example, `60` would result in the spring value being stuck at its original `from` position for 60 frames, after which the spring animation would continue normally.
+    - For example, `60` would result in the value being stuck at its original `from` position for 60 frames, after which the spring animation would continue normally.
 
 To create an easing config, call `InitComfyAnimConfig_Easing()`.
 ```c
