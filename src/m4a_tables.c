@@ -26,7 +26,7 @@ void *const gMPlayJumpTableTemplate[] =
     ply_lfodl,
     ply_mod,
     ply_modt,
-    ply_fine,
+    ply_lpf,
     ply_fine,
     ply_tune,
     ply_fine,

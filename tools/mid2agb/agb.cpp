@@ -393,6 +393,9 @@ void PrintControllerOp(const Event& event)
     case 0x18:
         PrintOp(event.time, "TUNE  ", "c_v%+d", event.param2 - 64);
         break;
+    case 0x19:
+        PrintOp(event.time, "LPF   ", "%u", event.param2);
+        break;
     case 0x1A:
         PrintOp(event.time, "LFODL ", "%u", event.param2);
         break;

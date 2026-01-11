@@ -1680,6 +1680,14 @@ void ply_xcmd_0D(struct MusicPlayerInfo *mplayInfo, struct MusicPlayerTrack *tra
     track->cmdPtr += 4;
 }
 
+void ply_lpf(struct MusicPlayerInfo *mplayInfo, struct MusicPlayerTrack *track)
+{
+    // Scale MIDI CC range (0-127) to filter coefficient range (0-255)
+    // MIDI 127 must map to 255 (LOW_PASS_FILTER_BYPASS)
+    gSoundInfo.lowPassFilterCoeff = (*track->cmdPtr * 255) / 127;
+    track->cmdPtr++;
+}
+
 void DummyFunc(void)
 {
 }
