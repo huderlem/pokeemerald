@@ -387,9 +387,46 @@ LittlerootTown_EventScript_GoSaveBirchTrigger::
 	releaseall
 	end
 
-LittlerootTown_EventScript_TownSign::
-	msgbox LittlerootTown_Text_TownSign, MSGBOX_SIGN
+LittlerootTown_EventScript_Light::
+	goto_if_set FLAG_TEMP_1, TakeOffEarMuffs
+	callnative SetLightLowPassFilter
+	setflag FLAG_TEMP_1
+	msgbox LittlerootTown_Text_Light, MSGBOX_SIGN
 	end
+
+LittlerootTown_Text_Light::
+	.string "{PLAYER} lightly covered his ears.$"
+
+LittlerootTown_EventScript_Medium::
+	goto_if_set FLAG_TEMP_1, TakeOffEarMuffs
+	callnative SetMediumLowPassFilter
+	setflag FLAG_TEMP_1
+	msgbox LittlerootTown_Text_Medium, MSGBOX_SIGN
+	end
+
+LittlerootTown_Text_Medium::
+	.string "{PLAYER} covered his ears.$"
+
+LittlerootTown_EventScript_Dark::
+	goto_if_set FLAG_TEMP_1, TakeOffEarMuffs
+	callnative SetDarkLowPassFilter
+	setflag FLAG_TEMP_1
+	msgbox LittlerootTown_Text_Dark, MSGBOX_SIGN
+	end
+
+LittlerootTown_Text_Dark::
+	.string "{PLAYER} fully plugged his ears.$"
+
+
+TakeOffEarMuffs::
+	callnative ResetLowPassFilter
+	clearflag FLAG_TEMP_1
+	msgbox LittlerootTown_Text_TookOffEarMuffs, MSGBOX_SIGN
+	end
+
+LittlerootTown_Text_TookOffEarMuffs::
+	.string "{PLAYER} uncovered his ears.$"
+
 
 LittlerootTown_EventScript_BirchsLabSign::
 	msgbox LittlerootTown_Text_ProfBirchsLab, MSGBOX_SIGN
