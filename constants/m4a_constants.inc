@@ -41,6 +41,8 @@
 	.equiv MPT_FLG_START,  0x40
 	.equiv MPT_FLG_EXIST,  0x80
 
+	.equiv LOW_PASS_FILTER_BYPASS, 0xFF
+
 	.macro struct_begin
 	.struct 0
 	.endm
@@ -96,7 +98,10 @@
 	struct_field o_SoundInfo_MPlayJumpTable, 4
 	struct_field o_SoundInfo_plynote, 4
 	struct_field o_SoundInfo_ExtVolPit, 4
-	struct_field o_SoundInfo_gap2, 16
+	struct_field o_SoundInfo_lowPassFilterStateLeft, 2
+	struct_field o_SoundInfo_lowPassFilterStateRight, 2
+	struct_field o_SoundInfo_lowPassFilterCoeff, 1
+	struct_field o_SoundInfo_gap2, 11
 	struct_field o_SoundInfo_chans, MAX_DIRECTSOUND_CHANNELS * 64
 	struct_field o_SoundInfo_pcmBuffer, PCM_DMA_BUF_SIZE * 2
 	struct_field SoundInfo_size, 0

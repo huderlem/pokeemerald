@@ -1021,6 +1021,68 @@ C_downsampler_loop:
 	and r12, r11, r12, lsr#15
 	orr r7, r12, r7, lsr#8
 
+	/* Apply global low-pass filter
+	 * This uses a simple one-pole filter to implement the low-pass filter.
+	 * That is, it interpolates between the previous and next output sample
+	 * using the currently configured coefficient.
+	 */
+	stmfd sp!, {r0-r3, r12}
+
+	ldr r12, [sp, #(ARG_PCM_STRUCT + 0x14)]  @ load SoundInfo pointer, keep in r12
+	ldrb r2, [r12, #o_SoundInfo_lowPassFilterCoeff]
+	cmp r2, #LOW_PASS_FILTER_BYPASS
+	beq C_lowpass_filter_bypass
+
+	ldrsh r1, [r12, #o_SoundInfo_lowPassFilterStateLeft]
+	ldrsh r3, [r12, #o_SoundInfo_lowPassFilterStateRight]
+
+	/* Filter left sample #1 (low byte of r6) */
+	mov r0, r6, lsl#24
+	mov r0, r0, asr#24
+	subs r0, r0, r1
+	mul r0, r2, r0
+	add r1, r1, r0, asr#8
+	bic r6, r6, #0xFF
+	and r0, r1, #0xFF
+	orr r6, r6, r0
+
+	/* Filter left sample #2 (high byte of r6) */
+	mov r0, r6, lsl#16
+	mov r0, r0, asr#24
+	subs r0, r0, r1
+	mul r0, r2, r0
+	add r1, r1, r0, asr#8
+	bic r6, r6, #0xFF00
+	and r0, r1, #0xFF
+	orr r6, r6, r0, lsl#8
+
+	/* Filter right sample #1 (low byte of r7) */
+	mov r0, r7, lsl#24
+	mov r0, r0, asr#24
+	subs r0, r0, r3
+	mul r0, r2, r0
+	add r3, r3, r0, asr#8
+	bic r7, r7, #0xFF
+	and r0, r3, #0xFF
+	orr r7, r7, r0
+
+	/* Filter right sample #2 (high byte of r7) */
+	mov r0, r7, lsl#16
+	mov r0, r0, asr#24
+	subs r0, r0, r3
+	mul r0, r2, r0
+	add r3, r3, r0, asr#8
+	bic r7, r7, #0xFF00
+	and r0, r3, #0xFF
+	orr r7, r7, r0, lsl#8
+
+	/* Save low pass filter state */
+	strh r1, [r12, #o_SoundInfo_lowPassFilterStateLeft]
+	strh r3, [r12, #o_SoundInfo_lowPassFilterStateRight]
+
+C_lowpass_filter_bypass:
+	ldmfd sp!, {r0-r3, r12}
+
 .if ENABLE_REVERB==1
 	ldrsh r12, [r9, r3]!
 
