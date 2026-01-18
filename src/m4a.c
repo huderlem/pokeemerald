@@ -800,6 +800,13 @@ void TrkVolPitSet(struct MusicPlayerInfo *mplayInfo, struct MusicPlayerTrack *tr
         if (track->modT == 0)
             x += 16 * track->modM;
 
+        // Apply arpeggio offset
+        if (track->arpSpeed && track->arpCount >= 2)
+        {
+            if (track->arpIndex > 0)
+                x += track->arpOffsets[track->arpIndex - 1] << 8;
+        }
+
         track->keyM = x >> 8;
         track->pitM = x;
     }
@@ -1651,6 +1658,26 @@ void ply_xcmd_0D(struct MusicPlayerInfo *mplayInfo, struct MusicPlayerTrack *tra
 
     track->unk_3C = unk;
     track->cmdPtr += 4;
+}
+
+void ply_xarp(struct MusicPlayerInfo *mplayInfo, struct MusicPlayerTrack *track)
+{
+    u8 speed = *track->cmdPtr++;
+    u8 count = *track->cmdPtr++;
+    s8 offset1 = (count >= 2) ? (s8)*track->cmdPtr++ : 0;
+    s8 offset2 = (count >= 3) ? (s8)*track->cmdPtr++ : 0;
+    s8 offset3 = (count >= 4) ? (s8)*track->cmdPtr++ : 0;
+
+    track->arpSpeed = speed;
+    track->arpSpeedC = speed - 1;
+    track->arpIndex = 0;
+    track->arpCount = (count >= 2 && count <= 4) ? count : 0;
+    track->arpOffsets[0] = offset1;
+    track->arpOffsets[1] = offset2;
+    track->arpOffsets[2] = offset3;
+
+    if (speed)
+        track->flags |= MPT_FLG_PITCHG;
 }
 
 void DummyFunc(void)

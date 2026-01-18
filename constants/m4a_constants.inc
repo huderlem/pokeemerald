@@ -180,7 +180,12 @@
 	struct_field o_MusicPlayerTrack_ToneData_decay, 1
 	struct_field o_MusicPlayerTrack_ToneData_sustain, 1
 	struct_field o_MusicPlayerTrack_ToneData_release, 1
-	struct_field o_MusicPlayerTrack_gap, 10
+	struct_field o_MusicPlayerTrack_arpSpeed, 1
+	struct_field o_MusicPlayerTrack_arpSpeedC, 1
+	struct_field o_MusicPlayerTrack_arpIndex, 1
+	struct_field o_MusicPlayerTrack_arpCount, 1
+	struct_field o_MusicPlayerTrack_arpOffsets, 3
+	struct_field o_MusicPlayerTrack_gap, 3
 	struct_field o_MusicPlayerTrack_timer, 2
 	struct_field o_MusicPlayerTrack_unk_3C, 4
 	struct_field o_MusicPlayerTrack_cmdPtr, 4

@@ -71,6 +71,7 @@
 	.equ	XCMD,	0xcd		@ extend command  ***lib
 	 .equ	xIECV,	0x08		@  imi.echo vol   ***lib
 	 .equ	xIECL,	0x09		@  imi.echo len   ***lib
+	 .equ	xARP,	0x0E		@  arpeggio control
 
 	.equ	EOT,	0xce		@ End of Tie
 	.equ	TIE,	0xcf		@

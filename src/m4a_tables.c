@@ -304,4 +304,5 @@ const XcmdFunc gXcmdTable[] =
     ply_xswee,
     ply_xwait,
     ply_xcmd_0D,
+    ply_xarp,
 };

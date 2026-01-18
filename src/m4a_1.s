@@ -1282,6 +1282,45 @@ _081DD938:
 	beq _081DD8E0
 	subs r0, 0x1
 	strb r0, [r5, o_MusicPlayerTrack_wait]
+
+@ Arpeggio processing (tempo-tick based)
+@ Use r3 as base for arpeggio fields (offsets > 31 need register offset)
+	movs r3, o_MusicPlayerTrack_arpSpeed
+	adds r3, r5, r3
+	ldrb r0, [r3]                  @ arpSpeed
+	cmp r0, 0
+	beq arp_done
+
+	ldrb r1, [r3, 1]               @ arpSpeedC
+	cmp r1, 0
+	beq arp_advance                @ Counter hit 0, advance to next step
+
+	subs r1, 1                     @ Decrement counter
+	strb r1, [r3, 1]               @ arpSpeedC
+	b arp_done
+
+arp_advance:
+	@ Reset counter to speed-1 (so next tick after speed ticks)
+	subs r0, 1
+	strb r0, [r3, 1]               @ arpSpeedC
+
+	@ Advance to next arpeggio step
+	ldrb r2, [r3, 2]               @ arpIndex
+	adds r2, 1
+	ldrb r0, [r3, 3]               @ arpCount
+	cmp r2, r0
+	blo arp_store_index
+	movs r2, 0                     @ Wrap to start
+
+arp_store_index:
+	strb r2, [r3, 2]               @ arpIndex
+	ldrb r0, [r5, o_MusicPlayerTrack_flags]
+	movs r3, MPT_FLG_PITCHG
+	orrs r0, r3
+	strb r0, [r5, o_MusicPlayerTrack_flags]
+
+arp_done:
+
 	ldrb r1, [r5, o_MusicPlayerTrack_lfoSpeed]
 	cmp r1, 0
 	beq _081DD994
@@ -1731,6 +1770,14 @@ _081DDC54:
 	str r5, [r4, o_SoundChannel_track]
 	ldrb r0, [r5, o_MusicPlayerTrack_lfoDelay]
 	strb r0, [r5, o_MusicPlayerTrack_lfoDelayC]
+@ Reset arpeggio counters on new note
+	movs r2, 0
+	movs r3, o_MusicPlayerTrack_arpSpeed
+	adds r3, r5, r3
+	ldrb r2, [r3, 0]               @ arpSpeed
+	subs r2, 1
+	strb r2, [r3, 1]               @ arpSpeedC
+	strb r2, [r3, 2]               @ arpIndex
 	cmp r0, r1
 	beq _081DDC66
 	adds r1, r5, 0

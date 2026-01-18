@@ -305,7 +305,12 @@ struct MusicPlayerTrack
     u8 pseudoEchoLength;
     struct SoundChannel *chan;
     struct ToneData tone;
-    u8 gap[10];
+    u8 arpSpeed;        // Arpeggio speed (0=disabled, 1-255=ticks per step)
+    u8 arpSpeedC;       // Speed counter (decrements each tick)
+    u8 arpIndex;        // Current position in pattern (0 to arpCount-1)
+    u8 arpCount;        // Total number of notes in arpeggio (2-4)
+    s8 arpOffsets[3];   // Semitone offsets (doesn't include the base tone)
+    u8 gap[3];
     u16 timer;
     u32 unk_3C;
     u8 *cmdPtr;
@@ -497,5 +502,6 @@ void ply_xleng(struct MusicPlayerInfo *, struct MusicPlayerTrack *);
 void ply_xswee(struct MusicPlayerInfo *, struct MusicPlayerTrack *);
 void ply_xwait(struct MusicPlayerInfo *, struct MusicPlayerTrack *);
 void ply_xcmd_0D(struct MusicPlayerInfo *, struct MusicPlayerTrack *);
+void ply_xarp(struct MusicPlayerInfo *, struct MusicPlayerTrack *);
 
 #endif // GUARD_GBA_M4A_INTERNAL_H
