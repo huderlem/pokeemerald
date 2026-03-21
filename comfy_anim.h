@@ -14,15 +14,15 @@ typedef s32 (*ComfyAnimEasingFunc)(s32 t /* Q_24_8 */);
 
 struct ComfyAnimEasingConfig {
     // The total duration of the animation in frames (e.g. ~60 frames per second)
-    u32 durationFrames;
+    u16 durationFrames;
+    // The number of frames to delay before starting the animation.
+    u16 delayFrames;
     // The starting position of the animation. Q_24_8 fixed-point value
     s32 from;
     // The target position of the animation. Q_24_8 fixed-point value
     s32 to;
     // The easing function used for advancing the animation.
     ComfyAnimEasingFunc easingFunc;
-    // The number of frames to delay before starting the animation.
-    u32 delayFrames;
 };
 
 struct ComfyAnimSpringConfig {
@@ -41,9 +41,9 @@ struct ComfyAnimSpringConfig {
     //    A value of 0 (the default) indicates no clamping--the spring will run to its natural conclusion.
     //    A value of 1 indicates the spring stops when it overshoots the target value the first time. (no wobbling)
     //    A value of 2 indicates the spring stops when it overshoots the target value the second time, and so on.
-    u32 clampAfter;
+    u16 clampAfter;
     // The number of frames to delay before starting the animation.
-    u32 delayFrames;
+    u16 delayFrames;
 };
 
 struct ComfyAnimConfig {
@@ -73,12 +73,12 @@ struct ComfyAnim {
     // The current velocity of the animation. Q_24_8 fixed-point value
     s32 velocity;
     // The number of frames to delay before processing the animation.
-    u32 delayFrames;
+    u32 delayFrames:30;
     // Indicates whether or not the animation has completed.
-    bool32 completed;
+    bool32 completed:1;
     // Indicates whether or not the animation is currently in use.
     // It's up to the consumer to called ReleaseComfyAnim when finished with it.
-    bool32 inUse;
+    bool32 inUse:1;
 };
 
 #define NUM_COMFY_ANIMS     8
