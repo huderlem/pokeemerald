@@ -807,6 +807,214 @@ void TrkVolPitSet(struct MusicPlayerInfo *mplayInfo, struct MusicPlayerTrack *tr
     track->flags &= ~(MPT_FLG_PITSET | MPT_FLG_VOLSET);
 }
 
+void ply_portamento(struct MusicPlayerInfo *mplayInfo, struct MusicPlayerTrack *track)
+{
+    track->portamentoDuration = *track->cmdPtr;
+    track->cmdPtr++;
+
+    if (track->chan != NULL && track->portamentoPrevKey == 0)
+        track->portamentoPrevKey = track->chan->key;
+}
+
+// Advances any active portamento glide on each track. Called from MPlayMain on
+// every invocation (~60 Hz--every Vblank) so the glide stays smooth regardless of tempo.
+// Tracks are assumed monophonic for portamento!
+void MPlayProcessPortamento(struct MusicPlayerInfo *mplayInfo)
+{
+    struct MusicPlayerTrack *track;
+    int trackCount;
+    u32 tempoI;
+    u32 newGlideMask;
+    u32 trackBit;
+
+    // If no tracks are actively gliding, and no new portamento-enabled notes were triggered,
+    // early exit because there is no work to do.
+    if (mplayInfo->activePortamentoGlideMask == 0 && mplayInfo->portamentoNoteFlag == 0)
+        return;
+
+    mplayInfo->portamentoNoteFlag = 0;
+
+    track = mplayInfo->tracks;
+    trackCount = mplayInfo->trackCount;
+    tempoI = mplayInfo->tempoI;
+    newGlideMask = 0;
+    trackBit = 1;
+
+    for (; trackCount > 0; trackCount--, track++, trackBit <<= 1)
+    {
+        struct SoundChannel *chan;
+        u32 statusFlags;
+        u32 newNoteTriggered;
+        u32 isGliding;
+        u32 cgbType;
+        u32 duration;
+        s32 elapsed;
+        s32 totalDurationUnits;
+        s32 startKey;
+        s32 targetKey;
+        s32 currentKey16; // current pitch in 8.8 fixed point: (key << 8) | fine
+        s32 fullPitch;
+        s32 clampedKey;
+        u8 fine;
+
+        duration = track->portamentoDuration;
+        elapsed = track->portamentoElapsed;
+
+        chan = track->chan;
+        if (chan == NULL || !(track->flags & MPT_FLG_EXIST))
+            continue;
+
+        statusFlags = chan->statusFlags;
+        newNoteTriggered = statusFlags & SOUND_CHANNEL_SF_START;
+
+        if (duration == 0 && elapsed == 0)
+        {
+            // Even with portamento disabled, we need to keep updating portamentoPrevKey
+            // so that future glides start from the actual previously-played key.
+            if (newNoteTriggered)
+                track->portamentoPrevKey = chan->key;
+            continue;
+        }
+
+        if (!newNoteTriggered && elapsed == 0)
+            continue;
+
+        cgbType = chan->type & TONEDATA_TYPE_CGB;
+        isGliding = (elapsed != 0);
+
+        if (newNoteTriggered)
+        {
+            if (duration != 0)
+            {
+                // When portamento is enabled, only adjacent notes that have zero
+                // gap between them are affected with the portamento glide. The
+                // destination note does not trigger its volume envelope or PCM
+                // sample. Instead, it inherits the previous note's state. This
+                // makes the portamento glide perfectly smooth between notes.
+                //
+                // Gap detection is different for PCM vs. CGB channels:
+                //  - DirectSound (PCM): each note allocates its own channel, so
+                //    the previous note's channel still sits in the track's chan
+                //    list until its release completes. If that channel is still
+                //    in any envelope phase, it means there is no gap!
+                //  - CGB: each tone type (e.g. square 1) shares a single channel
+                //    slot that ply_note reuses. envelopeVolume is preserved across
+                //    the reuse, so a non-zero value means the previous note was still
+                //    audible at the moment of retrigger, and therefore no gap.
+                if (cgbType)
+                {
+                    if (chan->envelopeVolume != 0)
+                    {
+                        // Clear the SOUND_CHANNEL_SF_START flag before CgbSound runs so
+                        // it skips the note trigger. Additionally, put it into sustain mode
+                        // so it's tricked into sustaining the previous note.
+                        chan->statusFlags = SOUND_CHANNEL_SF_ENV_SUSTAIN;
+                        ((struct CgbChannel *)chan)->modify |= CGB_CHANNEL_MO_PIT;
+                    }
+                }
+                else
+                {
+                    struct SoundChannel *prevChan = chan->nextChannelPointer;
+
+                    // Don't allow portamento if the voice changed between notes.
+                    if (prevChan != NULL
+                        && (prevChan->statusFlags & SOUND_CHANNEL_SF_ON)
+                        && chan->wav != NULL
+                        && chan->wav == prevChan->wav)
+                    {
+                        u8 prevVolume;
+
+                        // Copy othe sample position, envelope, and loop state from
+                        // the previous channel for smooth uninterrupted transition.
+                        chan->currentPointer = prevChan->currentPointer;
+                        chan->count = prevChan->count;
+                        chan->fw = prevChan->fw;
+                        prevVolume = prevChan->envelopeVolume;
+                        chan->envelopeVolume = (prevVolume > chan->sustain) ? prevVolume : chan->sustain;
+                        chan->statusFlags = SOUND_CHANNEL_SF_ENV_SUSTAIN | (prevChan->statusFlags & SOUND_CHANNEL_SF_LOOP);
+                        // Silence the previous channel so the two don't double-
+                        // voice. MPlayMain will garbage collect it soon.
+                        prevChan->statusFlags = 0;
+                    }
+                }
+            }
+
+            track->portamentoElapsed = 0;
+            elapsed = 0;
+            if (duration != 0 && track->portamentoPrevKey != 0 && track->portamentoPrevKey != chan->key)
+            {
+                isGliding = TRUE;
+            }
+            else
+            {
+                track->portamentoPrevKey = chan->key;
+                isGliding = FALSE;
+            }
+        }
+
+        if (!isGliding)
+            continue;
+
+        elapsed += tempoI;
+        track->portamentoElapsed = elapsed;
+
+        totalDurationUnits = duration * 150;
+        startKey = track->portamentoPrevKey;
+        targetKey = chan->key;
+
+        if (totalDurationUnits == 0 || elapsed >= totalDurationUnits)
+        {
+            // Portamento glide is complete!
+            currentKey16 = targetKey << 8;
+            track->portamentoPrevKey = targetKey;
+            track->portamentoElapsed = 0;
+        }
+        else
+        {
+            // Interpolate to get the current key.
+            currentKey16 = (startKey << 8)
+                         + (((targetKey - startKey) * elapsed) << 8) / totalDurationUnits;
+            newGlideMask |= trackBit;
+        }
+
+        // Apply the other track-level pitch adjustments (KEYSH, BEND, TUNE, modulation)
+        // on top of the interpolated key to get the final key/pitch value.
+        fullPitch = currentKey16 + ((s8)track->keyM << 8) + track->pitM;
+        clampedKey = fullPitch >> 8;
+        if (clampedKey < 0)
+            clampedKey = 0;
+        else if (clampedKey > 178)
+            clampedKey = 178;
+        fine = fullPitch & 0xFF;
+
+        // Apply the final interpolated pitch.
+        // This will almost always not end up being a loop, but there could be edge cases where multiple
+        // channels are alive, and we should apply the portamento pitch to them.
+        if (cgbType)
+        {
+            for (; chan != NULL; chan = chan->nextChannelPointer)
+            {
+                if (!(chan->statusFlags & SOUND_CHANNEL_SF_ON) || (chan->statusFlags & SOUND_CHANNEL_SF_STOP))
+                    continue;
+                ((struct CgbChannel *)chan)->frequency = MidiKeyToCgbFreq(cgbType, clampedKey, fine);
+                ((struct CgbChannel *)chan)->modify |= CGB_CHANNEL_MO_PIT;
+            }
+        }
+        else
+        {
+            for (; chan != NULL; chan = chan->nextChannelPointer)
+            {
+                if (!(chan->statusFlags & SOUND_CHANNEL_SF_ON) || (chan->statusFlags & SOUND_CHANNEL_SF_STOP))
+                    continue;
+                if (chan->wav != NULL)
+                    chan->frequency = MidiKeyToFreq(chan->wav, clampedKey, fine);
+            }
+        }
+    }
+
+    mplayInfo->activePortamentoGlideMask = newGlideMask;
+}
+
 u32 MidiKeyToCgbFreq(u8 chanNum, u8 key, u8 fineAdjust)
 {
     if (chanNum == 4)

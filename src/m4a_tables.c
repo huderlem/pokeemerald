@@ -29,7 +29,7 @@ void *const gMPlayJumpTableTemplate[] =
     ply_fine,
     ply_fine,
     ply_tune,
-    ply_fine,
+    ply_portamento,
     ply_fine,
     ply_fine,
     ply_port,

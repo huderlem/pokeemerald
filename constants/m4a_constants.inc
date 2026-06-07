@@ -180,7 +180,10 @@
 	struct_field o_MusicPlayerTrack_ToneData_decay, 1
 	struct_field o_MusicPlayerTrack_ToneData_sustain, 1
 	struct_field o_MusicPlayerTrack_ToneData_release, 1
-	struct_field o_MusicPlayerTrack_gap, 10
+	struct_field o_MusicPlayerTrack_portamentoDuration, 1
+	struct_field o_MusicPlayerTrack_portamentoPrevKey, 1
+	struct_field o_MusicPlayerTrack_portamentoElapsed, 2
+	struct_field o_MusicPlayerTrack_gap, 6
 	struct_field o_MusicPlayerTrack_timer, 2
 	struct_field o_MusicPlayerTrack_unk_3C, 4
 	struct_field o_MusicPlayerTrack_cmdPtr, 4
@@ -197,7 +200,10 @@
 	struct_field o_MusicPlayerInfo_cmd, 1
 	struct_field o_MusicPlayerInfo_unk_B, 1
 	struct_field o_MusicPlayerInfo_clock, 4
-	struct_field o_MusicPlayerInfo_gap, 8
+	struct_field o_MusicPlayerInfo_portamentoNoteFlag, 1
+	struct_field o_MusicPlayerInfo_gap_A, 1
+	struct_field o_MusicPlayerInfo_activeGlideMask, 2
+	struct_field o_MusicPlayerInfo_gap_B, 4
 	struct_field o_MusicPlayerInfo_memAccArea, 4
 	struct_field o_MusicPlayerInfo_tempoD, 2
 	struct_field o_MusicPlayerInfo_tempoU, 2

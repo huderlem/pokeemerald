@@ -1442,10 +1442,14 @@ _081DDA58:
 	mov r2, r9
 _081DDA62:
 	subs r2, 0x1
-	ble _081DDA6C
+	ble MPlayMain_Portamento
 	movs r0, MusicPlayerTrack_size
 	adds r5, r0
 	bgt _081DD9C8
+MPlayMain_Portamento:
+	@ Advance portamento glides for every channel. (r7 = mplayInfo)
+	adds r0, r7, 0
+	bl MPlayProcessPortamento
 _081DDA6C:
 	ldr r0, lt2_ID_NUMBER
 	str r0, [r7, o_MusicPlayerInfo_ident]
@@ -1803,6 +1807,9 @@ _081DDCDC:
 	movs r0, 0xF0
 	ands r0, r1
 	strb r0, [r5, o_MusicPlayerTrack_flags]
+	ldr r0, [sp]
+	movs r1, 1
+	strb r1, [r0, o_MusicPlayerInfo_portamentoNoteFlag]
 _081DDCEA:
 	add sp, 0x18
 	pop {r0-r7}
