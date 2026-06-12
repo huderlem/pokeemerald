@@ -68,6 +68,8 @@
 	.equ	MODT,	0xc5		@ modulation type
 	.equ	TUNE,	0xc8		@ micro tuning (c_v+??)
 	.equ	PORTAMENTO, 0xc9	@ portamento glide duration in ticks (0 = disable)
+	.equ	PWMC,	0xca		@ pulse-width mod duty cycle pattern id (0 = disable)
+	.equ	PWMS,	0xcb		@ pulse-width mod speed, vblank frames per step (0 = disable)
 
 	.equ	XCMD,	0xcd		@ extend command  ***lib
 	 .equ	xIECV,	0x08		@  imi.echo vol   ***lib

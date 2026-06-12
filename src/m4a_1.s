@@ -1450,6 +1450,9 @@ MPlayMain_Portamento:
 	@ Advance portamento glides for every channel. (r7 = mplayInfo)
 	adds r0, r7, 0
 	bl MPlayProcessPortamento
+	@ Advance pulse-width modulation duty cycles for every square-wave channel.
+	adds r0, r7, 0
+	bl MPlayProcessPulseWidthMod
 _081DDA6C:
 	ldr r0, lt2_ID_NUMBER
 	str r0, [r7, o_MusicPlayerInfo_ident]

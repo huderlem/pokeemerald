@@ -67,6 +67,17 @@ struct ToneData
     u8 release;
 };
 
+#define MAX_PWM_PATTERN_STEPS 7
+
+struct PulseWidthModPattern
+{
+    u8 numSteps;                    // 0 = disabled
+    u8 duty[MAX_PWM_PATTERN_STEPS]; // duty cycles: 0=12.5%, 1=25%, 2=50%, 3=75%
+};
+
+extern const struct PulseWidthModPattern gPulseWidthModPatterns[];
+extern const u8 gNumPulseWidthModPatterns;
+
 #define SOUND_CHANNEL_SF_START       0x80
 #define SOUND_CHANNEL_SF_STOP        0x40
 #define SOUND_CHANNEL_SF_LOOP        0x10
@@ -80,6 +91,7 @@ struct ToneData
 
 #define CGB_CHANNEL_MO_PIT  0x02
 #define CGB_CHANNEL_MO_VOL  0x01
+#define CGB_CHANNEL_MO_DUTY 0x04
 
 #define CGB_NRx2_ENV_DIR_DEC 0x00
 #define CGB_NRx2_ENV_DIR_INC 0x08
@@ -308,7 +320,11 @@ struct MusicPlayerTrack
     u8 portamentoDuration;
     u8 portamentoPrevKey;
     u16 portamentoElapsed;
-    u8 gap[6];
+    u8 pwmPattern;
+    u8 pwmSpeed;
+    u8 pwmSpeedCounter;
+    u8 pwmStep;
+    u8 gap[2];
     u16 timer;
     u32 unk_3C;
     u8 *cmdPtr;
@@ -337,7 +353,7 @@ struct MusicPlayerInfo
     u8 unk_B;
     u32 clock;
     u8 portamentoNoteFlag;
-    u8 gap_A;
+    u8 pwmActiveFlag;
     u16 activePortamentoGlideMask;
     u8 gap_B[4];
     u8 *memAccArea;
@@ -485,8 +501,11 @@ void ply_mod(struct MusicPlayerInfo *, struct MusicPlayerTrack *);
 void ply_modt(struct MusicPlayerInfo *, struct MusicPlayerTrack *);
 void ply_tune(struct MusicPlayerInfo *, struct MusicPlayerTrack *);
 void ply_portamento(struct MusicPlayerInfo *, struct MusicPlayerTrack *);
+void ply_pwmc(struct MusicPlayerInfo *, struct MusicPlayerTrack *);
+void ply_pwms(struct MusicPlayerInfo *, struct MusicPlayerTrack *);
 void ply_port(struct MusicPlayerInfo *, struct MusicPlayerTrack *);
 void MPlayProcessPortamento(struct MusicPlayerInfo *);
+void MPlayProcessPulseWidthMod(struct MusicPlayerInfo *);
 void ply_xcmd(struct MusicPlayerInfo *, struct MusicPlayerTrack *);
 void ply_endtie(struct MusicPlayerInfo *, struct MusicPlayerTrack *);
 void ply_note(u32 note_cmd, struct MusicPlayerInfo *, struct MusicPlayerTrack *);

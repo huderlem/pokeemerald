@@ -30,8 +30,8 @@ void *const gMPlayJumpTableTemplate[] =
     ply_fine,
     ply_tune,
     ply_portamento,
-    ply_fine,
-    ply_fine,
+    ply_pwmc,
+    ply_pwms,
     ply_port,
     ply_fine,
     ply_endtie,
@@ -42,6 +42,28 @@ void *const gMPlayJumpTableTemplate[] =
     RealClearChain,
     SoundMainBTM,
 };
+
+// Duty cycle patterns for the pulse-width modulation effect (PWMC command).
+// They loop from start to end during the effect.
+// Hardware duty-cycle values:
+//   0 = 12.5%
+//   1 = 25%
+//   2 = 50%
+//   3 = 75%.
+const struct PulseWidthModPattern gPulseWidthModPatterns[] =
+{
+    { 0, {0} },           // 0: none
+    { 3, {2, 1, 0} },     // 1: descending 50% -> 25% -> 12.5%
+    { 3, {0, 1, 2} },     // 2: ascending 12.5% -> 25% -> 50%
+    { 4, {0, 1, 2, 1} },  // 3: triangle 12.5% -> 25% -> 50% -> 25%
+    { 4, {2, 1, 0, 1} },  // 4: inverted triangle 50% -> 25% -> 12.5% -> 25%
+    { 2, {1, 2} },        // 5: alternating 25% <-> 50%
+    { 2, {0, 2} },        // 6: alternating 12.5% <-> 50%
+    { 2, {0, 1} },        // 7: alternating 12.5% <-> 25%
+    // Simply add more here if you want!
+};
+
+const u8 gNumPulseWidthModPatterns = sizeof(gPulseWidthModPatterns) / sizeof(gPulseWidthModPatterns[0]);
 
 // This is a table of deltas between sample values in compressed PCM data.
 const s8 gDeltaEncodingTable[] =
