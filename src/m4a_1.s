@@ -1751,6 +1751,27 @@ _081DDC66:
 	ldr r0, [sp, 0x10]
 	strb r0, [r4, o_SoundChannel_priority]
 	ldr r0, [sp, 0x8]
+	@ For voice_directsound (non-rhythm), treat tone->key as the sample's
+	@ base MIDI note: shift by (60 - tone->key) so the sample plays at the
+	@ correct pitch when any note is pressed. For whatever reason, the original
+	@ m4a engine doesn't respect this, and it makes constructing keysplit instruments
+	@ much more difficult. Luckily, none of the vanilla music is affected by this
+	@ base-midi-note change, so it's only beneficial to include.
+	ldr r1, [sp, 0xC]
+	cmp r1, 0
+	bne ply_note_StoreKey
+	movs r1, o_MusicPlayerTrack_ToneData_type
+	ldrb r1, [r5, r1]
+	movs r2, TONEDATA_TYPE_RHY
+	tst r1, r2
+	bne ply_note_StoreKey
+	mov r2, r9
+	ldrb r1, [r2, o_ToneData_key]
+	adds r0, 60
+	subs r0, r1
+	bpl ply_note_StoreKey
+	movs r0, 0
+ply_note_StoreKey:
 	strb r0, [r4, o_SoundChannel_key]
 	ldr r0, [sp, 0x14]
 	strb r0, [r4, o_SoundChannel_rhythmPan]
