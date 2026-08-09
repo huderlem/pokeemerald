@@ -1026,6 +1026,9 @@ void ply_pwmc(struct MusicPlayerInfo *mplayInfo, struct MusicPlayerTrack *track)
     track->pwmPattern = pattern;
     track->pwmStep = 0;
     track->pwmSpeedCounter = track->pwmSpeed;
+
+    if (pattern != 0 && track->pwmSpeed != 0)
+        mplayInfo->pwmActiveFlag = TRUE;
 }
 
 void ply_pwms(struct MusicPlayerInfo *mplayInfo, struct MusicPlayerTrack *track)
